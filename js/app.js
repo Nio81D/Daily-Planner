@@ -3,7 +3,7 @@
 const PREFIX='sdp-v1:';
 const COLORS=['#3b82f6','#4bd39b','#9d8cff','#f06b68','#65b6f2'];
 const ICON_KEYS=['trend-up','briefcase','book-open','barbell','fork-knife','moon-stars','person-simple-run','flag','shower','car','coffee','notebook','laptop','clock','check-circle'];
-const ICON_NAMES={'trend-up':'Markets',briefcase:'Work','book-open':'Study',barbell:'Fitness','fork-knife':'Meal','moon-stars':'Wind down','person-simple-run':'Run',flag:'Golf',shower:'Shower',car:'Travel',coffee:'Break',notebook:'Journal',laptop:'Computer',clock:'Time block','check-circle':'General'};
+const ICON_NAMES={'trend-up':'Markets',briefcase:'Work','book-open':'Study',barbell:'Fitness','fork-knife':'Meal','moon-stars':'Wind down','person-simple-run':'Run (Optional)',flag:'Golf',shower:'Shower',car:'Travel',coffee:'Break',notebook:'Journal',laptop:'Computer',clock:'Time block','check-circle':'General'};
 const DAYS=['S','M','T','W','T','F','S'];
 const state={tab:'today',date:strip(new Date()),month:strip(new Date()),tasks:loadJSON(PREFIX+'tasks',null)||defaults(),dayCache:{},editing:null};
 function defaults(){const WD=[1,2,3,4,5];return[
@@ -11,14 +11,14 @@ function defaults(){const WD=[1,2,3,4,5];return[
 {id:'t2',label:'Shower + breakfast',start:370,end:400,days:WD,color:COLORS[4]},
 {id:'t3',label:'Market Prep',start:400,end:495,days:WD,color:COLORS[0]},
 {id:'t5',label:'Work',start:510,end:960,days:WD,color:COLORS[3]},
-{id:'t6',label:'Gym',start:1020,end:1080,days:WD,color:COLORS[1]},
+{id:'t6',label:'Gym & Read',start:1020,end:1080,days:WD,color:COLORS[1]},
 {id:'t8',label:'Dinner',start:1080,end:1125,days:WD,color:COLORS[4]},
 {id:'t9',label:'Study: Company deep dive',start:1125,end:1230,days:[1],color:COLORS[2]},
 {id:'t10',label:'Study: Financial modeling',start:1125,end:1230,days:[2],color:COLORS[2]},
 {id:'t11',label:'Study: Sector reading',start:1125,end:1230,days:[3],color:COLORS[2]},
 {id:'t12',label:'Study: Quant / Python',start:1125,end:1230,days:[4],color:COLORS[2]},
 {id:'t13',label:'Study: Weekly catch-up',start:1125,end:1230,days:[5],color:COLORS[2]},
-{id:'t14',label:'Trade Journal',start:1230,end:1245,days:WD,color:COLORS[0]},
+{id:'t14',label:'Trading & Portfolio Deep Work',start:1230,end:1245,days:WD,color:COLORS[0]},
 {id:'t15',label:'Wind Down: read / meditate',start:1245,end:1290,days:WD,color:COLORS[4]},
 {id:'t16',label:'Golf',start:540,end:720,days:[6],color:COLORS[1]},
 {id:'t17',label:'Trading / portfolio deep work',start:780,end:960,days:[6],color:COLORS[0]},
@@ -40,11 +40,11 @@ function migrateV7(){
   const changes={
     t3:{label:'Market Prep',start:400,end:495},
     t5:{label:'Work',start:510,end:960},
-    t6:{label:'Gym',start:1020,end:1080},
+    t6:{label:'Gym & Read',start:1020,end:1080},
     t8:{label:'Dinner',start:1080,end:1125},
     t9:{start:1125,end:1230},t10:{start:1125,end:1230},t11:{start:1125,end:1230},
     t12:{start:1125,end:1230},t13:{start:1125,end:1230},
-    t14:{label:'Trade Journal',start:1230,end:1245},
+    t14:{label:'Trading & Portfolio Deep Work',start:1230,end:1245},
     t15:{label:'Wind Down: read / meditate',start:1245,end:1290}
   };
   state.tasks.forEach(t=>{if(changes[t.id])Object.assign(t,changes[t.id])});
