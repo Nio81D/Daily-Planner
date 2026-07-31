@@ -1,50 +1,56 @@
 # Planner
 
-Production baseline: **1.0.4**
-
 A phone-first personal planner hosted with GitHub Pages.
 
-## Stable update model
+## Repository structure
 
-- `index.html` contains the application shell.
-- `css/styles.css` contains visual styling.
-- `js/app.js` contains behavior and the hardcoded production defaults.
-- `sw.js` controls the offline cache. Change its cache version whenever HTML, CSS, or JavaScript changes.
-- Personal schedules and completion history remain in browser `localStorage` under the `sdp-v1:` keys.
+- `index.html` — application shell and PWA registration
+- `css/styles.css` — all visual styling
+- `js/app.js` — planner behavior, palette, icons, and default schedule
+- `manifest.webmanifest` — installable app metadata
+- `sw.js` — offline cache and update behavior
+- `assets/icons/` — Home Screen and browser icons
 
-## Editing defaults
+## Routine updates
 
-The production task list is the `DEFAULT_TASKS` constant near the top of `js/app.js`. Future default names, times, colors, icons, or recurring days can be changed directly there.
+### Change the default schedule
 
-There is no migration framework. Code updates do not rewrite a user's existing locally saved tasks. Personal task changes should normally be made through the Planner editor. Hardcoded defaults apply to a fresh install or after local planner data is cleared.
+Edit `DEFAULT_TASKS` near the top of `js/app.js`. Each task has a name, start and end time, recurring days, color, and icon.
 
-## Palette
+### Change the palette
 
-The production colors are defined once in the `PALETTE` constant near the top of `js/app.js`:
+Edit `PALETTE` near the top of `js/app.js`. The same values are used by the editor and default tasks.
 
-- Blue: `#3b82f6`
-- Green: `#4bd39b`
-- Purple: `#9d8cff`
-- Coral: `#f06b68`
-- Gold: `#f59e0b`
+### Change the interface
 
-## Current production design
+Edit `css/styles.css`. Sections are named by function rather than by historical release.
+
+### Publish an update
+
+1. Commit the changed files to the `main` branch.
+2. Change `CACHE_REVISION` near the top of `sw.js` whenever `index.html`, `css/styles.css`, `js/app.js`, the manifest, or an icon changes.
+3. Wait for the GitHub Pages deployment to complete.
+4. Refresh the hosted planner in Safari, then reopen the Home Screen app.
+
+## Local data
+
+Schedules and completion history are stored only in the browser under the stable `sdp-v1:` namespace. Repository updates do not rewrite existing saved tasks. Use the in-app editor for personal schedule changes and the backup tool for portability.
+
+## Design baseline
 
 - Structured-style daily timeline
-- Task-colored icon circles
-- Task-colored left borders
 - Blue application theme
-- Gold in place of the former light blue
-- Local storage, backup/restore, and offline support
+- Bright task colors with gold replacing light blue
+- Task-colored icon circles and left borders
+- Bundled inline SVG task icons with no external icon dependency
+- Offline support through the service worker
 
-## Release history
 
-### 1.0.4
-- Removed all migration and schema-version code.
-- Established `DEFAULT_TASKS` as the single editable source for production defaults.
-- Retained the final task names and color mappings.
-- Added the task-colored left border.
-- Replaced light blue with gold.
+## Source layout
 
-### 1.0.3
-- Simplified recurring weekday study blocks to `Study`.
+- `js/defaults.js`: palette and hardcoded recurring task defaults.
+- `js/icons.js`: local task icon catalog and rendering.
+- `js/app.js`: planner behavior, storage, and UI rendering.
+- `css/styles.css`: visual styling.
+
+For future task-name, time, default color, or default icon changes, edit `js/defaults.js`.

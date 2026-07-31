@@ -1,8 +1,20 @@
 :root{
-  --bg:#0b0d12;--surface:#141820;--surface2:#1b202a;--surface3:#242b37;
-  --text:#f5f6f8;--muted:#8f98a8;--line:#2a313d;--accent:#3b82f6;
-  --green:#4bd39b;--red:#f06b68;--violet:#9d8cff;--blue:#65b6f2;
-  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#0b0d12;
+  --surface:#141820;
+  --surface2:#1b202a;
+  --surface3:#242b37;
+  --text:#f5f6f8;
+  --muted:#8f98a8;
+  --line:#2a313d;
+  --accent:#3b82f6;
+  --green:#4bd39b;
+  --red:#f06b68;
+  --violet:#9d8cff;
+  --blue:#3b82f6;
+  --gold:#f59e0b;
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif}
@@ -10,7 +22,6 @@ button,input,textarea{font:inherit}
 button{color:inherit}
 .app{max-width:620px;margin:auto;min-height:100vh;padding:calc(14px + var(--safe-top)) 16px calc(92px + var(--safe-bottom));overflow-x:hidden}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin:2px 0 18px}
-.brand{font-size:13px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
 .icon-btn{width:42px;height:42px;border-radius:14px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:20px;cursor:pointer}
 .date-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
 .kicker{color:var(--muted);font-size:13px;margin-bottom:4px}
@@ -50,7 +61,7 @@ h1{font-size:30px;line-height:1.05;margin:0;letter-spacing:-.04em}
 @media(min-width:700px){.app{padding-left:24px;padding-right:24px}.habit-grid{grid-template-columns:repeat(3,1fr)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
 
-/* Structured-inspired compact daily timeline */
+/* Daily timeline */
 .day-timeline-card{padding:10px 12px 16px;margin-bottom:20px;overflow:hidden}
 .timeline-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 2px 12px}
 .timeline-summary strong{font-size:15px}.timeline-summary span{font-size:12px;color:var(--muted)}
@@ -84,11 +95,9 @@ h1{font-size:30px;line-height:1.05;margin:0;letter-spacing:-.04em}
 .week-day i{display:block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin:4px auto 0;opacity:.8}
 @media(min-width:700px){.day-timeline-card{padding:16px 18px}.structured-row{grid-template-columns:66px 48px minmax(0,1fr) 38px}.structured-timeline:before{left:91px}.structured-node{width:48px;height:48px}.structured-name{font-size:16px}}
 
-
-/* V8 polish */
-:root{--ease:cubic-bezier(.2,.8,.2,1)}
+/* Interaction and motion */
 html{scroll-behavior:smooth}
-body{background:radial-gradient(circle at 50% -180px,#1a2130 0,var(--bg) 420px);overscroll-behavior-y:none}
+body{overscroll-behavior-y:none}
 .app{animation:appIn .34s var(--ease)}
 .topbar{position:sticky;top:0;z-index:10;padding:8px 0 12px;background:linear-gradient(var(--bg) 72%,transparent);backdrop-filter:blur(14px)}
 .brand{font-size:26px;line-height:1.05;letter-spacing:-.035em;text-transform:none;color:var(--text);font-weight:850}
@@ -104,7 +113,7 @@ body{background:radial-gradient(circle at 50% -180px,#1a2130 0,var(--bg) 420px);
 .hero{animation:heroIn .35s var(--ease)}
 .hero.current-hero{border-color:color-mix(in srgb,var(--hero-color) 42%,var(--line))}
 .hero.current-hero:before{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 1px color-mix(in srgb,var(--hero-color) 28%,transparent) inset;animation:softPulse 2.8s ease-in-out infinite;pointer-events:none}
-.structured-row{border-radius:16px;padding:7px 8px 7px 10px}.structured-row:hover{background:rgba(255,255,255,.025)}
+.structured-row.structured-row:hover{background:rgba(255,255,255,.025)}
 .structured-row.current{background:color-mix(in srgb,var(--item-color) 8%,transparent)}
 .structured-row.current .structured-node{animation:nodePulse 2.4s ease-in-out infinite}
 .structured-row.completing{transform:translateX(7px);opacity:.45}
@@ -122,9 +131,7 @@ body{background:radial-gradient(circle at 50% -180px,#1a2130 0,var(--bg) 420px);
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,8px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
-
-/* V10 visual system: Lucide icons, restrained color, rebuilt habits */
-:root{--accent:#3b82f6;--green:#6fa88e;--blue:#6f91b7;--violet:#8f83ad;--red:#c87976}
+/* Habit list and visual system */
 body{background:var(--bg)}
 .card{background:var(--surface);box-shadow:none}
 .hero:after{opacity:.5}
@@ -145,24 +152,18 @@ body{background:var(--bg)}
 .swatch{box-shadow:0 0 0 1px rgba(255,255,255,.08) inset}.swatch.on{border-color:var(--text)}
 @media(min-width:700px){.habit-list{max-width:100%}}
 
-
-/* V11: Phosphor icons and brighter Structured-style color */
+/* Task icons and color accents */
 .structured-node{background:var(--item-color);color:#fff;border:0;box-shadow:0 0 0 4px var(--surface),0 7px 18px color-mix(in srgb,var(--item-color) 28%,transparent)}
 .structured-row.current .structured-node{box-shadow:0 0 0 4px var(--surface),0 8px 24px color-mix(in srgb,var(--item-color) 48%,transparent)}
-.structured-node i,.habit-icon i,.icon-choice i,.icon-preview-box i{font-size:22px;line-height:1;font-weight:400}
-.icon-choice i{font-size:24px}.icon-preview-box i{font-size:26px}
+.task-svg-icon{width:22px;height:22px;display:block}
+.icon-choice .task-svg-icon{width:24px;height:24px}.icon-preview-box .task-svg-icon{width:26px;height:26px}
 .habit-icon{background:color-mix(in srgb,var(--habit-color) 18%,var(--surface2));color:var(--habit-color);border-color:color-mix(in srgb,var(--habit-color) 30%,var(--line))}
 .habit-top strong{color:var(--habit-color)}
 .habit-progress i{background:var(--habit-color)}
 .week-dots span.on{background:var(--habit-color)}
 .icon-choice.on{color:var(--preview-color,var(--accent));border-color:currentColor;background:color-mix(in srgb,currentColor 12%,var(--bg))}
 
-
-/* Planner 1.0 blue theme */
-:root{
-  --accent:#3b82f6;
-  --blue:#60a5fa;
-}
+/* Application theme */
 .brand{
   font-size:36px;
   line-height:1;
@@ -188,9 +189,3 @@ body{background:var(--bg)}
 }
 .day.selected,.daypick.on,.week-day.active span{background:var(--accent);color:#fff}
 .primary{color:#fff}
-
-/* Production baseline 1.0.0 */
-.structured-row{
-  border-left:5px solid var(--item-color);
-  padding:7px 8px 7px 10px;
-}

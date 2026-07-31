@@ -1,46 +1,15 @@
 (()=>{
 'use strict';
-const APP_VERSION='1.0.4';
-const PREFIX='sdp-v1:';
-const PALETTE=Object.freeze({
-  blue:'#3b82f6',
-  green:'#4bd39b',
-  purple:'#9d8cff',
-  coral:'#f06b68',
-  gold:'#f59e0b'
-});
-const COLORS=Object.freeze(Object.values(PALETTE));
-const ICON_KEYS=['trend-up','briefcase','book-open','barbell','fork-knife','moon-stars','person-simple-run','flag','shower','car','coffee','notebook','laptop','clock','check-circle'];
-const ICON_NAMES={'trend-up':'Markets',briefcase:'Work','book-open':'Study',barbell:'Fitness','fork-knife':'Meal','moon-stars':'Wind down','person-simple-run':'Run',flag:'Golf',shower:'Shower',car:'Travel',coffee:'Break',notebook:'Journal',laptop:'Computer',clock:'Time block','check-circle':'General'};
-const DAYS=['S','M','T','W','T','F','S'];
-const WEEKDAYS=Object.freeze([1,2,3,4,5]);
-
-// Production defaults. Edit task names, times, days, colors, and icons here.
-const DEFAULT_TASKS=Object.freeze([
-{id:'t1',label:'Run (Optional)',start:330,end:370,days:WEEKDAYS,color:PALETTE.green},
-{id:'t2',label:'Shower & Breakfast',start:370,end:400,days:WEEKDAYS,color:PALETTE.blue},
-{id:'t3',label:'Market Prep',start:400,end:495,days:WEEKDAYS,color:PALETTE.gold},
-{id:'t5',label:'Work',start:510,end:960,days:WEEKDAYS,color:PALETTE.coral},
-{id:'t6',label:'Gym & Read',start:1020,end:1080,days:WEEKDAYS,color:PALETTE.green},
-{id:'t8',label:'Dinner',start:1080,end:1125,days:WEEKDAYS,color:PALETTE.blue},
-{id:'t9',label:'Study',start:1125,end:1230,days:[1],color:PALETTE.gold},
-{id:'t10',label:'Study',start:1125,end:1230,days:[2],color:PALETTE.gold},
-{id:'t11',label:'Study',start:1125,end:1230,days:[3],color:PALETTE.gold},
-{id:'t12',label:'Study',start:1125,end:1230,days:[4],color:PALETTE.gold},
-{id:'t13',label:'Study',start:1125,end:1230,days:[5],color:PALETTE.gold},
-{id:'t14',label:'Trade Journal',start:1230,end:1245,days:WEEKDAYS,color:PALETTE.gold},
-{id:'t15',label:'Wind Down: Read & Meditate',start:1245,end:1290,days:WEEKDAYS,color:PALETTE.gold},
-{id:'t16',label:'Golf',start:540,end:720,days:[6],color:PALETTE.green},
-{id:'t17',label:'Trading & Portfolio Deep Work',start:780,end:960,days:[6],color:PALETTE.gold},
-{id:'t18',label:'Gym & Read',start:480,end:630,days:[0],color:PALETTE.green},
-{id:'t19',label:'Weekly Review',start:840,end:960,days:[0],color:PALETTE.gold}
-]);
+// Keep this namespace stable so existing on-device data remains available.
+const STORAGE_PREFIX='sdp-v1:';
+const {PALETTE,COLORS,DAYS,WEEKDAYS,DEFAULT_TASKS}=window.PlannerDefaults;
+const {ICON_KEYS,ICON_NAMES,normalizeIconKey,inferIcon,iconSvg,taskIcon}=window.PlannerIcons;
 
 function freshDefaultTasks(){
   return DEFAULT_TASKS.map(task=>({...task,days:[...task.days]}));
 }
 
-const state={tab:'today',date:strip(new Date()),month:strip(new Date()),tasks:loadJSON(PREFIX+'tasks',null)||freshDefaultTasks(),dayCache:{},editing:null};
+const state={tab:'today',date:strip(new Date()),month:strip(new Date()),tasks:loadJSON(STORAGE_PREFIX+'tasks',null)||freshDefaultTasks(),dayCache:{},editing:null};
 function strip(d){const x=new Date(d);x.setHours(0,0,0,0);return x}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
 function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -49,37 +18,12 @@ function timeInput(m){return `${String(Math.floor(m/60)).padStart(2,'0')}:${Stri
 function fromTime(v){const [h,m]=v.split(':').map(Number);return h*60+m}
 function loadJSON(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}
 function saveJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{toast('Could not save on this device');return false}}
-function saveTasks(){saveJSON(PREFIX+'tasks',state.tasks)}
-function getDay(d){const k=dateKey(d);if(!(k in state.dayCache))state.dayCache[k]=loadJSON(PREFIX+'plan-day:'+k,{});return state.dayCache[k]}
-function saveDay(d){const k=dateKey(d);saveJSON(PREFIX+'plan-day:'+k,getDay(d))}
+function saveTasks(){saveJSON(STORAGE_PREFIX+'tasks',state.tasks)}
+function getDay(d){const k=dateKey(d);if(!(k in state.dayCache))state.dayCache[k]=loadJSON(STORAGE_PREFIX+'plan-day:'+k,{});return state.dayCache[k]}
+function saveDay(d){const k=dateKey(d);saveJSON(STORAGE_PREFIX+'plan-day:'+k,getDay(d))}
 function tasksOn(d){return state.tasks.filter(t=>Array.isArray(t.days)&&t.days.includes(d.getDay())).sort((a,b)=>a.start-b.start)}
 function isToday(d){return dateKey(d)===dateKey(new Date())}
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-function normalizeIconKey(key=''){
-const map={
-  chart:'trend-up','trending-up':'trend-up',book:'book-open',run:'person-simple-run','person-standing':'person-simple-run',
-  golf:'flag','shower-head':'shower',journal:'notebook','notebook-pen':'notebook','clock-3':'clock',
-  check:'check-circle','circle-check':'check-circle',dumbbell:'barbell',utensils:'fork-knife',moon:'moon-stars'
-};
-return map[key]||key||'check-circle'
-}
-function inferIcon(label=''){const x=label.toLowerCase();
-if(/run|jog/.test(x))return 'person-simple-run';
-if(/gym|workout|yoga|fitness/.test(x))return 'barbell';
-if(/golf/.test(x))return 'flag';
-if(/shower/.test(x))return 'shower';
-if(/breakfast|dinner|lunch|eat|meal/.test(x))return 'fork-knife';
-if(/journal/.test(x))return 'notebook';
-if(/read|study|research|deep dive|model/.test(x))return 'book-open';
-if(/market|trade|portfolio/.test(x))return 'trend-up';
-if(/commute|bike|drive|travel/.test(x))return 'car';
-if(/sleep|wind.down|meditat/.test(x))return 'moon-stars';
-if(/job|work|email/.test(x))return 'briefcase';
-if(/python|computer|laptop|code/.test(x))return 'laptop';
-if(/coffee|break/.test(x))return 'coffee';
-return 'check-circle'}
-function iconSvg(rawKey='check-circle'){const key=normalizeIconKey(rawKey);return `<i class="ph ph-${key}" aria-hidden="true"></i>`}
-function taskIcon(taskOrLabel=''){if(typeof taskOrLabel==='object')return iconSvg(normalizeIconKey(taskOrLabel.icon)||inferIcon(taskOrLabel.label));return iconSvg(inferIcon(taskOrLabel))}
 function taskState(t,d){return getDay(d)[t.id]||{}}
 function nowMinutes(){const n=new Date();return n.getHours()*60+n.getMinutes()}
 function currentTask(tasks,d){if(!isToday(d))return null;const n=nowMinutes();return tasks.find(t=>n>=t.start&&n<t.end)||null}
@@ -156,9 +100,9 @@ wrap.querySelector('#cancelEdit').onclick=()=>wrap.remove();
 const del=wrap.querySelector('#deleteTask');if(del)del.onclick=()=>{state.tasks=state.tasks.filter(x=>x.id!==id);saveTasks();wrap.remove();render()};
 wrap.querySelector('#saveTask').onclick=()=>{const label=wrap.querySelector('#fLabel').value.trim(),start=fromTime(wrap.querySelector('#fStart').value),end=fromTime(wrap.querySelector('#fEnd').value);if(!label)return toast('Add a name');if(!selectedDays.size)return toast('Choose at least one day');if(end<=start)return toast('End time must be later');if(id){Object.assign(state.editing,{label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon})}else state.tasks.push({id:'t'+Date.now(),label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon});saveTasks();wrap.remove();render()}
 }
-function collectBackup(){const days={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(PREFIX+'plan-day:'))days[k.slice((PREFIX+'plan-day:').length)]=loadJSON(k,{})}return {version:2,exportedAt:new Date().toISOString(),tasks:state.tasks,days}}
-function openBackup(){const data=JSON.stringify(collectBackup(),null,2),wrap=document.createElement('div');wrap.className='sheet-wrap';wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>Backup & restore</h3><div class="field"><label>Full backup</label><textarea class="backup" id="backupText">${esc(data)}</textarea></div><div class="field"><label>Restore from backup</label><textarea class="backup" id="restoreText" placeholder="Paste backup JSON here"></textarea></div><div class="sheet-actions"><button class="secondary" id="closeBackup">Close</button><button class="secondary" id="copyBackup">Copy</button><button class="primary" id="restoreBackup">Restore</button></div></div>`;document.body.appendChild(wrap);wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};wrap.querySelector('#closeBackup').onclick=()=>wrap.remove();wrap.querySelector('#copyBackup').onclick=async()=>{try{await navigator.clipboard.writeText(data);toast('Backup copied')}catch{wrap.querySelector('#backupText').select();document.execCommand('copy');toast('Backup copied')}};wrap.querySelector('#restoreBackup').onclick=()=>{try{const obj=JSON.parse(wrap.querySelector('#restoreText').value);if(!Array.isArray(obj.tasks)||typeof obj.days!=='object')throw 0;state.tasks=obj.tasks;saveTasks();Object.entries(obj.days).forEach(([k,v])=>saveJSON(PREFIX+'plan-day:'+k,v));state.dayCache={};wrap.remove();render();toast('Backup restored')}catch{toast('That backup is not valid')}}}
+function collectBackup(){const days={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(STORAGE_PREFIX+'plan-day:'))days[k.slice((STORAGE_PREFIX+'plan-day:').length)]=loadJSON(k,{})}return {version:2,exportedAt:new Date().toISOString(),tasks:state.tasks,days}}
+function openBackup(){const data=JSON.stringify(collectBackup(),null,2),wrap=document.createElement('div');wrap.className='sheet-wrap';wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>Backup & restore</h3><div class="field"><label>Full backup</label><textarea class="backup" id="backupText">${esc(data)}</textarea></div><div class="field"><label>Restore from backup</label><textarea class="backup" id="restoreText" placeholder="Paste backup JSON here"></textarea></div><div class="sheet-actions"><button class="secondary" id="closeBackup">Close</button><button class="secondary" id="copyBackup">Copy</button><button class="primary" id="restoreBackup">Restore</button></div></div>`;document.body.appendChild(wrap);wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};wrap.querySelector('#closeBackup').onclick=()=>wrap.remove();wrap.querySelector('#copyBackup').onclick=async()=>{try{await navigator.clipboard.writeText(data);toast('Backup copied')}catch{wrap.querySelector('#backupText').select();document.execCommand('copy');toast('Backup copied')}};wrap.querySelector('#restoreBackup').onclick=()=>{try{const obj=JSON.parse(wrap.querySelector('#restoreText').value);if(!Array.isArray(obj.tasks)||typeof obj.days!=='object')throw 0;state.tasks=obj.tasks;saveTasks();Object.entries(obj.days).forEach(([k,v])=>saveJSON(STORAGE_PREFIX+'plan-day:'+k,v));state.dayCache={};wrap.remove();render();toast('Backup restored')}catch{toast('That backup is not valid')}}}
 function toast(msg){document.querySelector('.toast')?.remove();const x=document.createElement('div');x.className='toast';x.textContent=msg;document.body.appendChild(x);setTimeout(()=>x.remove(),1800)}
 function bindSwipe(el,fn){let x=null,y=null;el.ontouchstart=e=>{if(e.touches.length===1&&!e.target.closest('button,input,textarea,.sheet')){x=e.touches[0].clientX;y=e.touches[0].clientY}};el.ontouchend=e=>{if(x===null)return;const dx=e.changedTouches[0].clientX-x,dy=e.changedTouches[0].clientY-y;x=y=null;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.4)fn(dx)}}
-document.getElementById('fab').onclick=()=>openEditor();if(!localStorage.getItem(PREFIX+'tasks'))saveTasks();localStorage.setItem(PREFIX+'app-version',APP_VERSION);render();setInterval(()=>{if(state.tab==='today'&&isToday(state.date))render()},60000);
+document.getElementById('fab').onclick=()=>openEditor();if(!localStorage.getItem(STORAGE_PREFIX+'tasks'))saveTasks();render();setInterval(()=>{if(state.tab==='today'&&isToday(state.date))render()},60000);
 })();
