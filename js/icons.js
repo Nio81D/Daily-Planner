@@ -81,7 +81,7 @@ function inferIcon(label = '') {
 
 function iconHtml(rawKey = 'check-circle') {
   const key = normalizeIconKey(rawKey);
-  return `<i class="ph ph-${key} task-phosphor-icon" aria-hidden="true"></i>`;
+  return '<i class="ph ph-' + key + ' task-phosphor-icon" aria-hidden="true"></i>';
 }
 
 function taskIcon(taskOrLabel = '') {
