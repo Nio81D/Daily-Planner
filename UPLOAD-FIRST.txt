@@ -1,0 +1,18 @@
+IMPORTANT
+
+1. Extract this ZIP on your computer.
+2. Open the extracted folder.
+3. In GitHub, choose Add file > Upload files.
+4. Drag ALL SEVEN ITEMS shown below into GitHub at the same time:
+
+   index.html
+   manifest.webmanifest
+   sw.js
+   README.md
+   assets folder
+   css folder
+   js folder
+
+5. Click Commit changes.
+
+The GitHub repository home page must show index.html directly. It must not be inside another folder.
