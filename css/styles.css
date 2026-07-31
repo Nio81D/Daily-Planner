@@ -188,6 +188,3 @@ body{background:var(--bg)}
 }
 .day.selected,.daypick.on,.week-day.active span{background:var(--accent);color:#fff}
 .primary{color:#fff}
-
-/* Bundled inline task icons */
-.task-svg-icon{width:1em;height:1em;display:block;overflow:visible;flex:none}
