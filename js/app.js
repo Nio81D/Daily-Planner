@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 // Keep this namespace stable so existing on-device data remains available.
+// Storage and application state
 const STORAGE_PREFIX='sdp-v1:';
 const {PALETTE,COLORS,DAYS,WEEKDAYS,DEFAULT_TASKS}=window.PlannerDefaults;
 const {ICON_KEYS,ICON_NAMES,normalizeIconKey,inferIcon,iconHtml,taskIcon}=window.PlannerIcons;
@@ -12,6 +13,8 @@ function freshDefaultTasks(){
 const state={tab:'today',date:strip(new Date()),month:strip(new Date()),tasks:loadJSON(STORAGE_PREFIX+'tasks',null)||freshDefaultTasks(),dayCache:{},editing:null};
 function strip(d){const x=new Date(d);x.setHours(0,0,0,0);return x}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+
+// Date and formatting utilities
 function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function mins(m){let h=Math.floor(m/60),mm=m%60,ap=h>=12?'PM':'AM';h%=12;if(!h)h=12;return `${h}:${String(mm).padStart(2,'0')} ${ap}`}
 function timeInput(m){return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`}
@@ -24,16 +27,28 @@ function saveDay(d){const k=dateKey(d);saveJSON(STORAGE_PREFIX+'plan-day:'+k,get
 function tasksOn(d){return state.tasks.filter(t=>Array.isArray(t.days)&&t.days.includes(d.getDay())).sort((a,b)=>a.start-b.start)}
 function isToday(d){return dateKey(d)===dateKey(new Date())}
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+
+// Per-day task state, focus, and notes
 function taskState(t,d){return getDay(d)[t.id]||{}}
+function dailyFocus(d=state.date){return getDay(d).__focus||''}
+function saveDailyFocus(value,d=state.date){const data=getDay(d);data.__focus=String(value||'').trim();saveDay(d)}
+function taskNote(t,d=state.date){return taskState(t,d).note||''}
+function saveTaskNote(id,value,d=state.date){const data=getDay(d);data[id]={...(data[id]||{}),note:String(value||'').trim()};saveDay(d)}
 function nowMinutes(){const n=new Date();return n.getHours()*60+n.getMinutes()}
 function currentTask(tasks,d){if(!isToday(d))return null;const n=nowMinutes();return tasks.find(t=>n>=t.start&&n<t.end)||null}
 function nextTask(tasks,d){if(!isToday(d))return tasks.find(t=>!taskState(t,d).done)||null;const n=nowMinutes();return tasks.find(t=>t.start>n&&!taskState(t,d).done)||null}
 function toggle(id,d=state.date){const data=getDay(d);data[id]={...(data[id]||{}),done:!data[id]?.done};saveDay(d);render()}
+
+// Progress calculations
 async function streak(t,from=state.date){let s=0,c=strip(from),seen=0;for(let i=0;i<180;i++){if(t.days.includes(c.getDay())){const done=!!getDay(c)[t.id]?.done;if(seen===0&&!done){}else if(done)s++;else break;seen++}c=addDays(c,-1)}return s}
 function greeting(){const h=new Date().getHours();return h<12?'Good morning':h<17?'Good afternoon':'Good evening'}
+
+// Shared interface rendering
 function top(){return `<div class="topbar"><div class="brand-wrap"><div><div class="brand">Planner</div><div class="greeting">${greeting()}</div></div></div><button class="icon-btn" id="backupBtn" aria-label="Backup and settings">⋯</button></div>`}
 function navIcon(id){const icons={today:'<svg viewBox="0 0 24 24"><path d="M4 5.5h16v14H4z"/><path d="M8 3v5M16 3v5M4 9h16"/><path d="M8 13h3M8 16h5"/></svg>',calendar:'<svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M8 2.5v4M16 2.5v4M3.5 9h17"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01"/></svg>',habits:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 7.5V12l3 2"/></svg>',stats:'<svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-7"/><path d="M3 20h18"/></svg>'};return icons[id]}
 function nav(){const items=[['today','Today'],['calendar','Calendar'],['habits','Habits'],['stats','Stats']];document.getElementById('bottomNav').innerHTML=items.map(([id,l])=>`<button class="nav-item ${state.tab===id?'active':''}" data-tab="${id}"><span class="nav-icon">${navIcon(id)}</span><span>${l}</span></button>`).join('');document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;render()})}
+
+// Today view
 async function renderToday(){
 const app=document.getElementById('app'),d=state.date,tasks=tasksOn(d),data=getDay(d),done=tasks.filter(t=>data[t.id]?.done).length,pct=tasks.length?Math.round(done/tasks.length*100):0,cur=currentTask(tasks,d),next=nextTask(tasks,d),hero=cur||next;
 const weekStart=addDays(d,-((d.getDay()+6)%7));
@@ -42,21 +57,25 @@ const n=nowMinutes();
 let rows='';
 for(let i=0;i<tasks.length;i++){
   const t=tasks[i],isDone=!!data[t.id]?.done,isCur=cur?.id===t.id,duration=Math.max(0,t.end-t.start),prev=tasks[i-1];
-  if(prev&&t.start>prev.end){const gap=t.start-prev.end;rows+=`<div class="structured-gap"><div class="structured-gap-time">${gap>=30?`${gap}m free`:''}</div><div></div><div class="structured-gap-line"></div></div>`}
+  if(prev&&t.start>prev.end){const gap=t.start-prev.end;rows+=`<div class="structured-gap"><div class="structured-gap-time">${mins(prev.end)}<br>${mins(t.start)}</div><div class="structured-gap-icon">＋</div><div class="structured-gap-copy"><b>Free time</b><span>${gap} minutes available</span></div></div>`}
   if(isToday(d)&&!cur&&n<t.start&&(i===0||n>=tasks[i-1].end)){rows+=`<div class="now-marker"><div class="now-marker-label">NOW</div><div class="now-marker-dot"></div><div class="now-marker-line"></div></div>`}
-  rows+=`<div class="structured-row ${isDone?'done':''} ${isCur?'current':''}" style="--item-color:${t.color}" data-edit="${t.id}"><div class="structured-time">${mins(t.start)}</div><div class="structured-node" aria-hidden="true">${taskIcon(t)}</div><div class="structured-copy"><div class="structured-name">${esc(t.label)}</div><div class="structured-meta">${duration} min · until ${mins(t.end)}</div></div><button class="structured-check" data-toggle="${t.id}" aria-label="Toggle ${esc(t.label)}">${isDone?'✓':''}</button></div>`;
+  const note=taskNote(t,d);rows+=`<div class="structured-row ${isDone?'done':''} ${isCur?'current':''}" style="--item-color:${t.color}" data-edit="${t.id}"><div class="structured-time">${mins(t.start)}</div><div class="structured-node" aria-hidden="true">${taskIcon(t)}</div><div class="structured-copy"><div class="structured-name">${esc(t.label)}</div><div class="structured-meta">${duration} min · until ${mins(t.end)}</div>${note?`<div class="structured-note">${esc(note)}</div>`:''}</div><button class="structured-check" data-toggle="${t.id}" aria-label="Toggle ${esc(t.label)}">${isDone?'✓':''}</button></div>`;
 }
 if(isToday(d)&&tasks.length&&n>=tasks[tasks.length-1].end){rows+=`<div class="now-marker"><div class="now-marker-label">NOW</div><div class="now-marker-dot"></div><div class="now-marker-line"></div></div>`}
-app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">${d.toLocaleDateString(undefined,{weekday:'long'})}</div><h1>${d.toLocaleDateString(undefined,{month:'long',day:'numeric'})}</h1></div><div class="date-controls"><button id="prevDay">‹</button><button id="nextDay">›</button></div></div><div class="week-strip">${weekStrip}</div>`+
+app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">${d.toLocaleDateString(undefined,{weekday:'long'})}</div><h1>${d.toLocaleDateString(undefined,{month:'long',day:'numeric'})}</h1></div><div class="date-controls"><button id="prevDay">‹</button><button id="nextDay">›</button></div></div><div class="week-strip">${weekStrip}</div><div class="card daily-focus-card"><div class="daily-focus-heading"><span>Daily focus</span><small>Set for this day only</small></div><textarea id="dailyFocus" rows="2" maxlength="180" placeholder="What matters most today?">${esc(dailyFocus(d))}</textarea></div>`+
 (hero?`<div class="card hero ${cur?'current-hero':''}" style="--hero-color:${hero.color}"><div class="hero-label">${cur?'Now':'Up next'}</div><div class="hero-title">${esc(hero.label)}</div><div class="hero-time">${mins(hero.start)} – ${mins(hero.end)}</div><div class="hero-actions"><button class="primary" data-toggle="${hero.id}">${data[hero.id]?.done?'Undo':'Mark complete'}</button><button class="secondary" data-edit="${hero.id}">Edit</button></div></div>`:`<div class="card hero"><div class="hero-label">All clear</div><div class="hero-title">Nothing else scheduled</div><div class="hero-time">Use the + button to add a block.</div></div>`)+
 `<div class="card progress-card"><div class="ring" style="--p:${pct}%"><span>${pct}%</span></div><div><div class="progress-title">${done} of ${tasks.length} complete</div><div class="progress-sub">${tasks.length-done?`${tasks.length-done} blocks remaining`:'Daily plan complete'}</div></div></div><div class="section-head"><h2>Daily schedule</h2><button id="goToday">${isToday(d)?'Today':'Go to today'}</button></div>`+
 (tasks.length?`<div class="card day-timeline-card"><div class="timeline-summary"><strong>${mins(tasks[0].start)} – ${mins(tasks[tasks.length-1].end)}</strong><span>Tap an item to edit</span></div><div class="structured-timeline">${rows}</div></div>`:`<div class="empty"><b>No scheduled blocks</b>Add a block for this day.</div>`);
-bindBase();document.getElementById('prevDay').onclick=()=>{state.date=addDays(d,-1);render()};document.getElementById('nextDay').onclick=()=>{state.date=addDays(d,1);render()};document.getElementById('goToday').onclick=()=>{state.date=strip(new Date());render()};document.querySelectorAll('[data-weekdate]').forEach(b=>b.onclick=()=>{state.date=new Date(b.dataset.weekdate+'T00:00:00');render()});bindTasks();bindSwipe(app,dx=>{state.date=addDays(state.date,dx>0?-1:1);render()});
+bindBase();const focusInput=document.getElementById('dailyFocus');let focusTimer=null;focusInput.oninput=()=>{clearTimeout(focusTimer);focusTimer=setTimeout(()=>saveDailyFocus(focusInput.value,d),350)};focusInput.onblur=()=>saveDailyFocus(focusInput.value,d);document.getElementById('prevDay').onclick=()=>{state.date=addDays(d,-1);render()};document.getElementById('nextDay').onclick=()=>{state.date=addDays(d,1);render()};document.getElementById('goToday').onclick=()=>{state.date=strip(new Date());render()};document.querySelectorAll('[data-weekdate]').forEach(b=>b.onclick=()=>{state.date=new Date(b.dataset.weekdate+'T00:00:00');render()});bindTasks();bindSwipe(app,dx=>{state.date=addDays(state.date,dx>0?-1:1);render()});
 }
-function taskHTML(t,d,current=false){const done=!!taskState(t,d).done;return `<div class="task ${done?'done':''} ${current?'current':''}" style="--task-color:${t.color}" data-edit="${t.id}"><button class="check" data-toggle="${t.id}" aria-label="Toggle ${esc(t.label)}">${done?'✓':''}</button><div><div class="task-name">${esc(t.label)}</div><div class="task-meta">${mins(t.start)} – ${mins(t.end)}</div></div><i class="task-dot"></i></div>`}
+
+// Calendar view
+function taskHTML(t,d,current=false){const done=!!taskState(t,d).done,note=taskNote(t,d);return `<div class="task ${done?'done':''} ${current?'current':''}" style="--task-color:${t.color}" data-edit="${t.id}"><button class="check" data-toggle="${t.id}" aria-label="Toggle ${esc(t.label)}">${done?'✓':''}</button><div><div class="task-name">${esc(t.label)}</div><div class="task-meta">${mins(t.start)} – ${mins(t.end)}</div>${note?`<div class="task-note">${esc(note)}</div>`:''}</div><i class="task-dot"></i></div>`}
 async function renderCalendar(){const app=document.getElementById('app'),m=state.month,first=new Date(m.getFullYear(),m.getMonth(),1),start=addDays(first,-((first.getDay()+6)%7)),cells=[];for(let i=0;i<42;i++){const d=addDays(start,i),ts=tasksOn(d),dn=ts.filter(t=>getDay(d)[t.id]?.done).length,cnt=Math.min(dn,3);cells.push(`<button class="day ${d.getMonth()!==m.getMonth()?'other':''} ${isToday(d)?'today':''} ${dateKey(d)===dateKey(state.date)?'selected':''}" data-date="${dateKey(d)}"><span>${d.getDate()}</span><span class="mini">${'<i></i>'.repeat(cnt)}</span></button>`)}
 const selected=tasksOn(state.date);app.innerHTML=top()+`<div class="month-head"><h2>${m.toLocaleDateString(undefined,{month:'long',year:'numeric'})}</h2><div class="month-controls"><button id="prevMonth">‹</button><button id="nextMonth">›</button></div></div><div class="card"><div class="calendar">${['M','T','W','T','F','S','S'].map(x=>`<div class="dow">${x}</div>`).join('')}${cells.join('')}</div></div><div class="section-head"><h2>${state.date.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})}</h2><button id="openDay">Open day</button></div><div class="task-list">${selected.length?selected.map(t=>taskHTML(t,state.date,false)).join(''):`<div class="empty"><b>No blocks</b>This day has no recurring schedule.</div>`}</div>`;
 bindBase();document.getElementById('prevMonth').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()-1,1);render()};document.getElementById('nextMonth').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()+1,1);render()};document.getElementById('openDay').onclick=()=>{state.tab='today';render()};document.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{state.date=new Date(b.dataset.date+'T00:00:00');state.month=new Date(state.date.getFullYear(),state.date.getMonth(),1);render()});bindTasks()}
+
+// Habits and statistics views
 async function renderHabits(){
 const app=document.getElementById('app'),today=strip(new Date()),rows=[];
 for(const t of state.tasks.slice().sort((a,b)=>a.start-b.start)){
@@ -73,6 +92,8 @@ function bindTasks(){document.querySelectorAll('[data-toggle]').forEach(b=>b.onc
 function bindBase(){document.getElementById('backupBtn').onclick=openBackup}
 function render(){nav();document.getElementById('fab').style.display=state.tab==='stats'?'none':'block';if(state.tab==='today')renderToday();else if(state.tab==='calendar')renderCalendar();else if(state.tab==='habits')renderHabits();else renderStats()}
 function iconFor(task){return taskIcon(task)}
+
+// Task editor
 function openEditor(id=null){
 state.editing=id?state.tasks.find(t=>t.id===id):null;
 const t=state.editing||{label:'',start:540,end:600,days:[state.date.getDay()],color:COLORS[0],icon:'clock-3'};
@@ -81,6 +102,7 @@ const wrap=document.createElement('div');wrap.className='sheet-wrap';
 wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>${id?'Edit block':'New block'}</h3>
 <div class="icon-preview" style="--preview-color:${t.color}"><div class="icon-preview-box" id="iconPreview">${iconHtml(initialIcon)}</div><div class="icon-preview-copy"><b id="previewName">${esc(t.label||'New block')}</b><small id="previewIconName">${ICON_NAMES[initialIcon]}</small></div></div>
 <div class="field"><label>Name</label><input id="fLabel" value="${esc(t.label)}" placeholder="What are you doing?"></div>
+<div class="field"><label>Note for ${state.date.toLocaleDateString(undefined,{month:'short',day:'numeric'})}</label><textarea id="fNote" rows="3" maxlength="240" placeholder="Optional focus, objective, or reminder for this occurrence">${esc(id?taskNote(t,state.date):'')}</textarea></div>
 <div class="field"><label>Icon</label><div class="icon-grid">${ICON_KEYS.map(k=>`<button type="button" class="icon-choice ${initialIcon===k?'on':''}" data-icon="${k}" aria-label="${ICON_NAMES[k]}">${iconHtml(k)}<span>${ICON_NAMES[k]}</span></button>`).join('')}</div></div>
 <div class="row"><div class="field"><label>Start</label><input id="fStart" type="time" value="${timeInput(t.start)}"></div><div class="field"><label>End</label><input id="fEnd" type="time" value="${timeInput(t.end)}"></div></div>
 <div class="field"><label>Repeats</label><div class="preset-row"><button type="button" class="preset-btn" data-repeat="weekdays">Weekdays</button><button type="button" class="preset-btn" data-repeat="weekends">Weekends</button><button type="button" class="preset-btn" data-repeat="daily">Every day</button><button type="button" class="preset-btn" data-repeat="once">This day</button></div><div class="days">${DAYS.map((d,i)=>`<button type="button" class="daypick ${t.days.includes(i)?'on':''}" data-daypick="${i}">${d}</button>`).join('')}</div></div>
@@ -98,10 +120,14 @@ wrap.querySelectorAll('[data-repeat]').forEach(b=>b.onclick=()=>{const mode=b.da
 wrap.querySelectorAll('[data-color]').forEach(b=>b.onclick=()=>{selectedColor=b.dataset.color;wrap.querySelectorAll('[data-color]').forEach(x=>x.classList.toggle('on',x===b));updatePreview()});
 wrap.querySelector('#cancelEdit').onclick=()=>wrap.remove();
 const del=wrap.querySelector('#deleteTask');if(del)del.onclick=()=>{state.tasks=state.tasks.filter(x=>x.id!==id);saveTasks();wrap.remove();render()};
-wrap.querySelector('#saveTask').onclick=()=>{const label=wrap.querySelector('#fLabel').value.trim(),start=fromTime(wrap.querySelector('#fStart').value),end=fromTime(wrap.querySelector('#fEnd').value);if(!label)return toast('Add a name');if(!selectedDays.size)return toast('Choose at least one day');if(end<=start)return toast('End time must be later');if(id){Object.assign(state.editing,{label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon})}else state.tasks.push({id:'t'+Date.now(),label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon});saveTasks();wrap.remove();render()}
+wrap.querySelector('#saveTask').onclick=()=>{const label=wrap.querySelector('#fLabel').value.trim(),start=fromTime(wrap.querySelector('#fStart').value),end=fromTime(wrap.querySelector('#fEnd').value);if(!label)return toast('Add a name');if(!selectedDays.size)return toast('Choose at least one day');if(end<=start)return toast('End time must be later');let savedId=id;if(id){Object.assign(state.editing,{label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon})}else{savedId='t'+Date.now();state.tasks.push({id:savedId,label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon})}saveTasks();saveTaskNote(savedId,wrap.querySelector('#fNote').value,state.date);wrap.remove();render()}
 }
+
+// Backup and restore
 function collectBackup(){const days={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(STORAGE_PREFIX+'plan-day:'))days[k.slice((STORAGE_PREFIX+'plan-day:').length)]=loadJSON(k,{})}return {version:2,exportedAt:new Date().toISOString(),tasks:state.tasks,days}}
 function openBackup(){const data=JSON.stringify(collectBackup(),null,2),wrap=document.createElement('div');wrap.className='sheet-wrap';wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>Backup & restore</h3><div class="field"><label>Full backup</label><textarea class="backup" id="backupText">${esc(data)}</textarea></div><div class="field"><label>Restore from backup</label><textarea class="backup" id="restoreText" placeholder="Paste backup JSON here"></textarea></div><div class="sheet-actions"><button class="secondary" id="closeBackup">Close</button><button class="secondary" id="copyBackup">Copy</button><button class="primary" id="restoreBackup">Restore</button></div><button class="reset-defaults" id="resetDefaults" type="button">Restore current default schedule</button></div>`;document.body.appendChild(wrap);wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};wrap.querySelector('#closeBackup').onclick=()=>wrap.remove();wrap.querySelector('#copyBackup').onclick=async()=>{try{await navigator.clipboard.writeText(data);toast('Backup copied')}catch{wrap.querySelector('#backupText').select();document.execCommand('copy');toast('Backup copied')}};wrap.querySelector('#restoreBackup').onclick=()=>{try{const obj=JSON.parse(wrap.querySelector('#restoreText').value);if(!Array.isArray(obj.tasks)||typeof obj.days!=='object')throw 0;state.tasks=obj.tasks;saveTasks();Object.entries(obj.days).forEach(([k,v])=>saveJSON(STORAGE_PREFIX+'plan-day:'+k,v));state.dayCache={};wrap.remove();render();toast('Backup restored')}catch{toast('That backup is not valid')}};wrap.querySelector('#resetDefaults').onclick=()=>{if(!confirm('Replace your recurring schedule with the current defaults? Completion history will be kept.'))return;state.tasks=freshDefaultTasks();saveTasks();wrap.remove();render();toast('Default schedule restored')}}
+
+// Interaction helpers and initialization
 function toast(msg){document.querySelector('.toast')?.remove();const x=document.createElement('div');x.className='toast';x.textContent=msg;document.body.appendChild(x);setTimeout(()=>x.remove(),1800)}
 function bindSwipe(el,fn){let x=null,y=null;el.ontouchstart=e=>{if(e.touches.length===1&&!e.target.closest('button,input,textarea,.sheet')){x=e.touches[0].clientX;y=e.touches[0].clientY}};el.ontouchend=e=>{if(x===null)return;const dx=e.changedTouches[0].clientX-x,dy=e.changedTouches[0].clientY-y;x=y=null;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.4)fn(dx)}}
 document.getElementById('fab').onclick=()=>openEditor();if(!localStorage.getItem(STORAGE_PREFIX+'tasks'))saveTasks();render();setInterval(()=>{if(state.tab==='today'&&isToday(state.date))render()},60000);
