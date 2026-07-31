@@ -1,29 +1,46 @@
 (()=>{
 'use strict';
+const APP_VERSION='1.0.4';
 const PREFIX='sdp-v1:';
-const COLORS=['#3b82f6','#4bd39b','#9d8cff','#f06b68','#65b6f2'];
+const PALETTE=Object.freeze({
+  blue:'#3b82f6',
+  green:'#4bd39b',
+  purple:'#9d8cff',
+  coral:'#f06b68',
+  gold:'#f59e0b'
+});
+const COLORS=Object.freeze(Object.values(PALETTE));
 const ICON_KEYS=['trend-up','briefcase','book-open','barbell','fork-knife','moon-stars','person-simple-run','flag','shower','car','coffee','notebook','laptop','clock','check-circle'];
-const ICON_NAMES={'trend-up':'Markets',briefcase:'Work','book-open':'Study',barbell:'Fitness','fork-knife':'Meal','moon-stars':'Wind down','person-simple-run':'Run (Optional)',flag:'Golf',shower:'Shower',car:'Travel',coffee:'Break',notebook:'Journal',laptop:'Computer',clock:'Time block','check-circle':'General'};
+const ICON_NAMES={'trend-up':'Markets',briefcase:'Work','book-open':'Study',barbell:'Fitness','fork-knife':'Meal','moon-stars':'Wind down','person-simple-run':'Run',flag:'Golf',shower:'Shower',car:'Travel',coffee:'Break',notebook:'Journal',laptop:'Computer',clock:'Time block','check-circle':'General'};
 const DAYS=['S','M','T','W','T','F','S'];
-const state={tab:'today',date:strip(new Date()),month:strip(new Date()),tasks:loadJSON(PREFIX+'tasks',null)||defaults(),dayCache:{},editing:null};
-function defaults(){const WD=[1,2,3,4,5];return[
-{id:'t1',label:'Run (optional)',start:330,end:370,days:WD,color:COLORS[4]},
-{id:'t2',label:'Shower + breakfast',start:370,end:400,days:WD,color:COLORS[4]},
-{id:'t3',label:'Market Prep',start:400,end:495,days:WD,color:COLORS[0]},
-{id:'t5',label:'Work',start:510,end:960,days:WD,color:COLORS[3]},
-{id:'t6',label:'Gym & Read',start:1020,end:1080,days:WD,color:COLORS[1]},
-{id:'t8',label:'Dinner',start:1080,end:1125,days:WD,color:COLORS[4]},
-{id:'t9',label:'Study: Company deep dive',start:1125,end:1230,days:[1],color:COLORS[2]},
-{id:'t10',label:'Study: Financial modeling',start:1125,end:1230,days:[2],color:COLORS[2]},
-{id:'t11',label:'Study: Sector reading',start:1125,end:1230,days:[3],color:COLORS[2]},
-{id:'t12',label:'Study: Quant / Python',start:1125,end:1230,days:[4],color:COLORS[2]},
-{id:'t13',label:'Study: Weekly catch-up',start:1125,end:1230,days:[5],color:COLORS[2]},
-{id:'t14',label:'Trading & Portfolio Deep Work',start:1230,end:1245,days:WD,color:COLORS[0]},
-{id:'t15',label:'Wind Down: read / meditate',start:1245,end:1290,days:WD,color:COLORS[4]},
-{id:'t16',label:'Golf',start:540,end:720,days:[6],color:COLORS[1]},
-{id:'t17',label:'Trading / portfolio deep work',start:780,end:960,days:[6],color:COLORS[0]},
-{id:'t18',label:'Gym + long-form reading',start:480,end:630,days:[0],color:COLORS[1]},
-{id:'t19',label:'Weekly review',start:840,end:960,days:[0],color:COLORS[0]}];}
+const WEEKDAYS=Object.freeze([1,2,3,4,5]);
+
+// Production defaults. Edit task names, times, days, colors, and icons here.
+const DEFAULT_TASKS=Object.freeze([
+{id:'t1',label:'Run (Optional)',start:330,end:370,days:WEEKDAYS,color:PALETTE.green},
+{id:'t2',label:'Shower & Breakfast',start:370,end:400,days:WEEKDAYS,color:PALETTE.blue},
+{id:'t3',label:'Market Prep',start:400,end:495,days:WEEKDAYS,color:PALETTE.gold},
+{id:'t5',label:'Work',start:510,end:960,days:WEEKDAYS,color:PALETTE.coral},
+{id:'t6',label:'Gym & Read',start:1020,end:1080,days:WEEKDAYS,color:PALETTE.green},
+{id:'t8',label:'Dinner',start:1080,end:1125,days:WEEKDAYS,color:PALETTE.blue},
+{id:'t9',label:'Study',start:1125,end:1230,days:[1],color:PALETTE.gold},
+{id:'t10',label:'Study',start:1125,end:1230,days:[2],color:PALETTE.gold},
+{id:'t11',label:'Study',start:1125,end:1230,days:[3],color:PALETTE.gold},
+{id:'t12',label:'Study',start:1125,end:1230,days:[4],color:PALETTE.gold},
+{id:'t13',label:'Study',start:1125,end:1230,days:[5],color:PALETTE.gold},
+{id:'t14',label:'Trade Journal',start:1230,end:1245,days:WEEKDAYS,color:PALETTE.gold},
+{id:'t15',label:'Wind Down: Read & Meditate',start:1245,end:1290,days:WEEKDAYS,color:PALETTE.gold},
+{id:'t16',label:'Golf',start:540,end:720,days:[6],color:PALETTE.green},
+{id:'t17',label:'Trading & Portfolio Deep Work',start:780,end:960,days:[6],color:PALETTE.gold},
+{id:'t18',label:'Gym & Read',start:480,end:630,days:[0],color:PALETTE.green},
+{id:'t19',label:'Weekly Review',start:840,end:960,days:[0],color:PALETTE.gold}
+]);
+
+function freshDefaultTasks(){
+  return DEFAULT_TASKS.map(task=>({...task,days:[...task.days]}));
+}
+
+const state={tab:'today',date:strip(new Date()),month:strip(new Date()),tasks:loadJSON(PREFIX+'tasks',null)||freshDefaultTasks(),dayCache:{},editing:null};
 function strip(d){const x=new Date(d);x.setHours(0,0,0,0);return x}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
 function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -33,35 +50,6 @@ function fromTime(v){const [h,m]=v.split(':').map(Number);return h*60+m}
 function loadJSON(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}
 function saveJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{toast('Could not save on this device');return false}}
 function saveTasks(){saveJSON(PREFIX+'tasks',state.tasks)}
-function migrateV7(){
-  const marker=PREFIX+'migration-v7';
-  if(localStorage.getItem(marker))return;
-  state.tasks=state.tasks.filter(t=>!['t4','t7'].includes(t.id));
-  const changes={
-    t3:{label:'Market Prep',start:400,end:495},
-    t5:{label:'Work',start:510,end:960},
-    t6:{label:'Gym & Read',start:1020,end:1080},
-    t8:{label:'Dinner',start:1080,end:1125},
-    t9:{start:1125,end:1230},t10:{start:1125,end:1230},t11:{start:1125,end:1230},
-    t12:{start:1125,end:1230},t13:{start:1125,end:1230},
-    t14:{label:'Trading & Portfolio Deep Work',start:1230,end:1245},
-    t15:{label:'Wind Down: read / meditate',start:1245,end:1290}
-  };
-  state.tasks.forEach(t=>{if(changes[t.id])Object.assign(t,changes[t.id])});
-  saveTasks();
-  localStorage.setItem(marker,'1');
-}
-function migrateV10(){
-  const marker=PREFIX+'migration-v10';if(localStorage.getItem(marker))return;
-  const colorFor=label=>/gym|run|golf|workout|fitness/i.test(label)?COLORS[2]:/study|read|research|model|python/i.test(label)?COLORS[3]:/market|trade|work|job|portfolio/i.test(label)?COLORS[1]:/dinner|breakfast|shower|wind|meditat/i.test(label)?COLORS[0]:COLORS[4];
-  state.tasks.forEach(t=>{t.icon=normalizeIconKey(t.icon||inferIcon(t.label));t.color=colorFor(t.label)});saveTasks();localStorage.setItem(marker,'1');
-}
-function migrateV11(){
-  const marker=PREFIX+'migration-v11';if(localStorage.getItem(marker))return;
-  const colorFor=label=>/market|trade|portfolio/i.test(label)?COLORS[0]:/gym|run|golf|workout|fitness/i.test(label)?COLORS[1]:/study|read|research|model|python/i.test(label)?COLORS[2]:/work|job|email/i.test(label)?COLORS[3]:/dinner|breakfast|shower|wind|meditat/i.test(label)?COLORS[4]:COLORS[0];
-  state.tasks.forEach(t=>{t.icon=normalizeIconKey(t.icon||inferIcon(t.label));t.color=colorFor(t.label)});
-  saveTasks();localStorage.setItem(marker,'1');
-}
 function getDay(d){const k=dateKey(d);if(!(k in state.dayCache))state.dayCache[k]=loadJSON(PREFIX+'plan-day:'+k,{});return state.dayCache[k]}
 function saveDay(d){const k=dateKey(d);saveJSON(PREFIX+'plan-day:'+k,getDay(d))}
 function tasksOn(d){return state.tasks.filter(t=>Array.isArray(t.days)&&t.days.includes(d.getDay())).sort((a,b)=>a.start-b.start)}
@@ -172,5 +160,5 @@ function collectBackup(){const days={};for(let i=0;i<localStorage.length;i++){co
 function openBackup(){const data=JSON.stringify(collectBackup(),null,2),wrap=document.createElement('div');wrap.className='sheet-wrap';wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>Backup & restore</h3><div class="field"><label>Full backup</label><textarea class="backup" id="backupText">${esc(data)}</textarea></div><div class="field"><label>Restore from backup</label><textarea class="backup" id="restoreText" placeholder="Paste backup JSON here"></textarea></div><div class="sheet-actions"><button class="secondary" id="closeBackup">Close</button><button class="secondary" id="copyBackup">Copy</button><button class="primary" id="restoreBackup">Restore</button></div></div>`;document.body.appendChild(wrap);wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};wrap.querySelector('#closeBackup').onclick=()=>wrap.remove();wrap.querySelector('#copyBackup').onclick=async()=>{try{await navigator.clipboard.writeText(data);toast('Backup copied')}catch{wrap.querySelector('#backupText').select();document.execCommand('copy');toast('Backup copied')}};wrap.querySelector('#restoreBackup').onclick=()=>{try{const obj=JSON.parse(wrap.querySelector('#restoreText').value);if(!Array.isArray(obj.tasks)||typeof obj.days!=='object')throw 0;state.tasks=obj.tasks;saveTasks();Object.entries(obj.days).forEach(([k,v])=>saveJSON(PREFIX+'plan-day:'+k,v));state.dayCache={};wrap.remove();render();toast('Backup restored')}catch{toast('That backup is not valid')}}}
 function toast(msg){document.querySelector('.toast')?.remove();const x=document.createElement('div');x.className='toast';x.textContent=msg;document.body.appendChild(x);setTimeout(()=>x.remove(),1800)}
 function bindSwipe(el,fn){let x=null,y=null;el.ontouchstart=e=>{if(e.touches.length===1&&!e.target.closest('button,input,textarea,.sheet')){x=e.touches[0].clientX;y=e.touches[0].clientY}};el.ontouchend=e=>{if(x===null)return;const dx=e.changedTouches[0].clientX-x,dy=e.changedTouches[0].clientY-y;x=y=null;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.4)fn(dx)}}
-document.getElementById('fab').onclick=()=>openEditor();if(!localStorage.getItem(PREFIX+'tasks'))saveTasks();migrateV7();migrateV10();migrateV11();localStorage.setItem(PREFIX+'ui-version','11');render();setInterval(()=>{if(state.tab==='today'&&isToday(state.date))render()},60000);
+document.getElementById('fab').onclick=()=>openEditor();if(!localStorage.getItem(PREFIX+'tasks'))saveTasks();localStorage.setItem(PREFIX+'app-version',APP_VERSION);render();setInterval(()=>{if(state.tab==='today'&&isToday(state.date))render()},60000);
 })();

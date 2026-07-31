@@ -56,7 +56,8 @@ h1{font-size:30px;line-height:1.05;margin:0;letter-spacing:-.04em}
 .timeline-summary strong{font-size:15px}.timeline-summary span{font-size:12px;color:var(--muted)}
 .structured-timeline{position:relative;padding:2px 0 8px}
 .structured-timeline:before{content:"";position:absolute;left:73px;top:34px;bottom:34px;width:2px;background:var(--line);border-radius:2px}
-.structured-row{display:grid;grid-template-columns:56px 44px minmax(0,1fr) 34px;align-items:center;gap:10px;min-height:68px;position:relative;cursor:pointer;border-radius:16px;padding:5px 8px 5px 10px;border-left:5px solid var(--item-color);}.structured-row:hover{background:color-mix(in srgb,var(--surface2) 55%,transparent)}
+.structured-row{display:grid;grid-template-columns:56px 44px minmax(0,1fr) 34px;align-items:center;gap:10px;min-height:68px;position:relative;cursor:pointer;border-radius:16px;padding:5px 8px 5px 10px;border-left:5px solid var(--item-color)}
+.structured-row:hover{background:color-mix(in srgb,var(--surface2) 55%,transparent)}
 .structured-row.current{background:color-mix(in srgb,var(--item-color) 10%,transparent)}
 .structured-row.done{opacity:.58}
 .structured-time{font-size:11px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -103,7 +104,7 @@ body{background:radial-gradient(circle at 50% -180px,#1a2130 0,var(--bg) 420px);
 .hero{animation:heroIn .35s var(--ease)}
 .hero.current-hero{border-color:color-mix(in srgb,var(--hero-color) 42%,var(--line))}
 .hero.current-hero:before{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 1px color-mix(in srgb,var(--hero-color) 28%,transparent) inset;animation:softPulse 2.8s ease-in-out infinite;pointer-events:none}
-.structured-row{border-radius:16px;padding:7px 4px}.structured-row:hover{background:rgba(255,255,255,.025)}
+.structured-row{border-radius:16px;padding:7px 8px 7px 10px}.structured-row:hover{background:rgba(255,255,255,.025)}
 .structured-row.current{background:color-mix(in srgb,var(--item-color) 8%,transparent)}
 .structured-row.current .structured-node{animation:nodePulse 2.4s ease-in-out infinite}
 .structured-row.completing{transform:translateX(7px);opacity:.45}
@@ -187,3 +188,9 @@ body{background:var(--bg)}
 }
 .day.selected,.daypick.on,.week-day.active span{background:var(--accent);color:#fff}
 .primary{color:#fff}
+
+/* Production baseline 1.0.0 */
+.structured-row{
+  border-left:5px solid var(--item-color);
+  padding:7px 8px 7px 10px;
+}
