@@ -57,7 +57,7 @@ const n=nowMinutes();
 let rows='';
 for(let i=0;i<tasks.length;i++){
   const t=tasks[i],isDone=!!data[t.id]?.done,isCur=cur?.id===t.id,duration=Math.max(0,t.end-t.start),prev=tasks[i-1];
-  if(prev&&t.start>prev.end){const gap=t.start-prev.end;rows+=`<div class="structured-gap"><div class="structured-gap-time">${mins(prev.end)}<br>${mins(t.start)}</div><div class="structured-gap-icon">＋</div><div class="structured-gap-copy"><b>Free time</b><span>${gap} minutes available</span></div></div>`}
+  if(prev&&t.start>prev.end){const gap=t.start-prev.end;rows+=`<button type="button" class="structured-gap" data-gap-start="${prev.end}" data-gap-end="${t.start}" aria-label="Create a block from ${mins(prev.end)} to ${mins(t.start)}"><div class="structured-gap-time">${mins(prev.end)}<br>${mins(t.start)}</div><div class="structured-gap-icon">＋</div><div class="structured-gap-copy"><b>Free time</b><span>${gap} minutes available · tap to add</span></div></button>`}
   if(isToday(d)&&!cur&&n<t.start&&(i===0||n>=tasks[i-1].end)){rows+=`<div class="now-marker"><div class="now-marker-label">NOW</div><div class="now-marker-dot"></div><div class="now-marker-line"></div></div>`}
   const note=taskNote(t,d);rows+=`<div class="structured-row ${isDone?'done':''} ${isCur?'current':''}" style="--item-color:${t.color}" data-edit="${t.id}"><div class="structured-time">${mins(t.start)}</div><div class="structured-node" aria-hidden="true">${taskIcon(t)}</div><div class="structured-copy"><div class="structured-name">${esc(t.label)}</div><div class="structured-meta">${duration} min · until ${mins(t.end)}</div>${note?`<div class="structured-note">${esc(note)}</div>`:''}</div><button class="structured-check" data-toggle="${t.id}" aria-label="Toggle ${esc(t.label)}">${isDone?'✓':''}</button></div>`;
 }
@@ -66,7 +66,7 @@ app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">${d.toLocale
 (hero?`<div class="card hero ${cur?'current-hero':''}" style="--hero-color:${hero.color}"><div class="hero-label">${cur?'Now':'Up next'}</div><div class="hero-title">${esc(hero.label)}</div><div class="hero-time">${mins(hero.start)} – ${mins(hero.end)}</div><div class="hero-actions"><button class="primary" data-toggle="${hero.id}">${data[hero.id]?.done?'Undo':'Mark complete'}</button><button class="secondary" data-edit="${hero.id}">Edit</button></div></div>`:`<div class="card hero"><div class="hero-label">All clear</div><div class="hero-title">Nothing else scheduled</div><div class="hero-time">Use the + button to add a block.</div></div>`)+
 `<div class="card progress-card"><div class="ring" style="--p:${pct}%"><span>${pct}%</span></div><div><div class="progress-title">${done} of ${tasks.length} complete</div><div class="progress-sub">${tasks.length-done?`${tasks.length-done} blocks remaining`:'Daily plan complete'}</div></div></div><div class="section-head"><h2>Daily schedule</h2><button id="goToday">${isToday(d)?'Today':'Go to today'}</button></div>`+
 (tasks.length?`<div class="card day-timeline-card"><div class="timeline-summary"><strong>${mins(tasks[0].start)} – ${mins(tasks[tasks.length-1].end)}</strong><span>Tap an item to edit</span></div><div class="structured-timeline">${rows}</div></div>`:`<div class="empty"><b>No scheduled blocks</b>Add a block for this day.</div>`);
-bindBase();const focusInput=document.getElementById('dailyFocus');let focusTimer=null;focusInput.oninput=()=>{clearTimeout(focusTimer);focusTimer=setTimeout(()=>saveDailyFocus(focusInput.value,d),350)};focusInput.onblur=()=>saveDailyFocus(focusInput.value,d);document.getElementById('prevDay').onclick=()=>{state.date=addDays(d,-1);render()};document.getElementById('nextDay').onclick=()=>{state.date=addDays(d,1);render()};document.getElementById('goToday').onclick=()=>{state.date=strip(new Date());render()};document.querySelectorAll('[data-weekdate]').forEach(b=>b.onclick=()=>{state.date=new Date(b.dataset.weekdate+'T00:00:00');render()});bindTasks();bindSwipe(app,dx=>{state.date=addDays(state.date,dx>0?-1:1);render()});
+bindBase();const focusInput=document.getElementById('dailyFocus');let focusTimer=null;focusInput.oninput=()=>{clearTimeout(focusTimer);focusTimer=setTimeout(()=>saveDailyFocus(focusInput.value,d),350)};focusInput.onblur=()=>saveDailyFocus(focusInput.value,d);document.getElementById('prevDay').onclick=()=>{state.date=addDays(d,-1);render()};document.getElementById('nextDay').onclick=()=>{state.date=addDays(d,1);render()};document.getElementById('goToday').onclick=()=>{state.date=strip(new Date());render()};document.querySelectorAll('[data-weekdate]').forEach(b=>b.onclick=()=>{state.date=new Date(b.dataset.weekdate+'T00:00:00');render()});document.querySelectorAll('[data-gap-start]').forEach(gap=>gap.onclick=()=>openEditor(null,{start:+gap.dataset.gapStart,end:+gap.dataset.gapEnd,days:[state.date.getDay()] }));bindTasks();bindSwipe(app,dx=>{state.date=addDays(state.date,dx>0?-1:1);render()});
 }
 
 // Calendar view
@@ -94,9 +94,9 @@ function render(){nav();document.getElementById('fab').style.display=state.tab==
 function iconFor(task){return taskIcon(task)}
 
 // Task editor
-function openEditor(id=null){
+function openEditor(id=null,preset=null){
 state.editing=id?state.tasks.find(t=>t.id===id):null;
-const t=state.editing||{label:'',start:540,end:600,days:[state.date.getDay()],color:COLORS[0],icon:'clock-3'};
+const t=state.editing||{label:'',start:540,end:600,days:[state.date.getDay()],color:COLORS[0],icon:'clock-3',...(preset||{})};
 const initialIcon=normalizeIconKey(t.icon||inferIcon(t.label));
 const wrap=document.createElement('div');wrap.className='sheet-wrap';
 wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>${id?'Edit block':'New block'}</h3>
@@ -123,9 +123,180 @@ const del=wrap.querySelector('#deleteTask');if(del)del.onclick=()=>{state.tasks=
 wrap.querySelector('#saveTask').onclick=()=>{const label=wrap.querySelector('#fLabel').value.trim(),start=fromTime(wrap.querySelector('#fStart').value),end=fromTime(wrap.querySelector('#fEnd').value);if(!label)return toast('Add a name');if(!selectedDays.size)return toast('Choose at least one day');if(end<=start)return toast('End time must be later');let savedId=id;if(id){Object.assign(state.editing,{label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon})}else{savedId='t'+Date.now();state.tasks.push({id:savedId,label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon})}saveTasks();saveTaskNote(savedId,wrap.querySelector('#fNote').value,state.date);wrap.remove();render()}
 }
 
-// Backup and restore
-function collectBackup(){const days={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith(STORAGE_PREFIX+'plan-day:'))days[k.slice((STORAGE_PREFIX+'plan-day:').length)]=loadJSON(k,{})}return {version:2,exportedAt:new Date().toISOString(),tasks:state.tasks,days}}
-function openBackup(){const data=JSON.stringify(collectBackup(),null,2),wrap=document.createElement('div');wrap.className='sheet-wrap';wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>Backup & restore</h3><div class="field"><label>Full backup</label><textarea class="backup" id="backupText">${esc(data)}</textarea></div><div class="field"><label>Restore from backup</label><textarea class="backup" id="restoreText" placeholder="Paste backup JSON here"></textarea></div><div class="sheet-actions"><button class="secondary" id="closeBackup">Close</button><button class="secondary" id="copyBackup">Copy</button><button class="primary" id="restoreBackup">Restore</button></div><button class="reset-defaults" id="resetDefaults" type="button">Restore current default schedule</button></div>`;document.body.appendChild(wrap);wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};wrap.querySelector('#closeBackup').onclick=()=>wrap.remove();wrap.querySelector('#copyBackup').onclick=async()=>{try{await navigator.clipboard.writeText(data);toast('Backup copied')}catch{wrap.querySelector('#backupText').select();document.execCommand('copy');toast('Backup copied')}};wrap.querySelector('#restoreBackup').onclick=()=>{try{const obj=JSON.parse(wrap.querySelector('#restoreText').value);if(!Array.isArray(obj.tasks)||typeof obj.days!=='object')throw 0;state.tasks=obj.tasks;saveTasks();Object.entries(obj.days).forEach(([k,v])=>saveJSON(STORAGE_PREFIX+'plan-day:'+k,v));state.dayCache={};wrap.remove();render();toast('Backup restored')}catch{toast('That backup is not valid')}};wrap.querySelector('#resetDefaults').onclick=()=>{if(!confirm('Replace your recurring schedule with the current defaults? Completion history will be kept.'))return;state.tasks=freshDefaultTasks();saveTasks();wrap.remove();render();toast('Default schedule restored')}}
+// Backup and transfer
+const DEVICE_LABEL_KEY=STORAGE_PREFIX+'device-label';
+const UNDO_RESTORE_KEY=STORAGE_PREFIX+'undo-restore';
+
+function collectDays(){
+  const days={};
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(key&&key.startsWith(STORAGE_PREFIX+'plan-day:')){
+      days[key.slice((STORAGE_PREFIX+'plan-day:').length)]=loadJSON(key,{});
+    }
+  }
+  return days;
+}
+
+function collectBackup(kind='full'){
+  const base={
+    version:3,
+    type:kind,
+    exportedAt:new Date().toISOString(),
+    deviceLabel:localStorage.getItem(DEVICE_LABEL_KEY)||'',
+    tasks:state.tasks
+  };
+  if(kind==='full')base.days=collectDays();
+  return base;
+}
+
+function backupFileName(kind){
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  return `planner-${kind}-${stamp}.json`;
+}
+
+function downloadBackup(kind){
+  const json=JSON.stringify(collectBackup(kind),null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download=backupFileName(kind);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+  toast(kind==='full'?'Full backup downloaded':'Schedule backup downloaded');
+}
+
+function validateBackup(obj){
+  if(!obj||!Array.isArray(obj.tasks))throw new Error('Backup must contain a tasks array.');
+  if(obj.days!==undefined&&(typeof obj.days!=='object'||Array.isArray(obj.days)||obj.days===null))throw new Error('Backup daily data is invalid.');
+  return obj;
+}
+
+function backupSummary(obj){
+  const dayCount=obj.days?Object.keys(obj.days).length:0;
+  const created=obj.exportedAt?new Date(obj.exportedAt).toLocaleString():'Unknown';
+  return {
+    created,
+    source:obj.deviceLabel||'Unlabeled device',
+    tasks:obj.tasks.length,
+    days:dayCount,
+    hasDays:!!obj.days
+  };
+}
+
+function clearDayRecords(){
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(key&&key.startsWith(STORAGE_PREFIX+'plan-day:'))keys.push(key);
+  }
+  keys.forEach(key=>localStorage.removeItem(key));
+}
+
+function saveUndoSnapshot(){
+  try{localStorage.setItem(UNDO_RESTORE_KEY,JSON.stringify(collectBackup('full')))}catch{}
+}
+
+function applyBackup(obj,mode){
+  validateBackup(obj);
+  saveUndoSnapshot();
+  if(mode==='everything'||mode==='schedule'){
+    state.tasks=obj.tasks.map(task=>({...task,days:Array.isArray(task.days)?[...task.days]:[]}));
+    saveTasks();
+  }
+  if(mode==='everything'||mode==='daily'){
+    if(!obj.days)throw new Error('This backup does not contain daily history.');
+    clearDayRecords();
+    Object.entries(obj.days).forEach(([key,value])=>saveJSON(STORAGE_PREFIX+'plan-day:'+key,value));
+    state.dayCache={};
+  }
+}
+
+function undoLastRestore(){
+  const raw=localStorage.getItem(UNDO_RESTORE_KEY);
+  if(!raw)return toast('No restore is available to undo');
+  try{
+    const obj=validateBackup(JSON.parse(raw));
+    state.tasks=obj.tasks.map(task=>({...task,days:Array.isArray(task.days)?[...task.days]:[]}));
+    saveTasks();
+    clearDayRecords();
+    Object.entries(obj.days||{}).forEach(([key,value])=>saveJSON(STORAGE_PREFIX+'plan-day:'+key,value));
+    state.dayCache={};
+    localStorage.removeItem(UNDO_RESTORE_KEY);
+    render();
+    toast('Last restore undone');
+  }catch{toast('The undo backup could not be restored')}
+}
+
+async function copyBackupText(text,textarea){
+  try{await navigator.clipboard.writeText(text);toast('Full backup copied')}
+  catch{textarea.focus();textarea.select();document.execCommand('copy');toast('Full backup copied')}
+}
+
+function openBackup(){
+  const fullJson=JSON.stringify(collectBackup('full'),null,2);
+  const wrap=document.createElement('div');
+  wrap.className='sheet-wrap';
+  wrap.innerHTML=`<div class="sheet backup-sheet"><div class="grab"></div><h3>Backup & transfer</h3>
+  <div class="backup-section"><div class="backup-section-head"><b>This device</b><span>Name backups so the source is obvious</span></div><div class="field"><label>Device name</label><input id="deviceLabel" maxlength="40" placeholder="e.g. Personal iPhone" value="${esc(localStorage.getItem(DEVICE_LABEL_KEY)||'')}"></div></div>
+  <div class="backup-section"><div class="backup-section-head"><b>Export</b><span>Use full backup when moving between devices</span></div><div class="backup-grid"><button class="primary" id="downloadFull">Download full backup</button><button class="secondary" id="downloadSchedule">Download schedule only</button><button class="secondary" id="copyBackup">Copy full JSON</button></div><details class="backup-advanced"><summary>Show JSON</summary><textarea class="backup" id="backupText" readonly>${esc(fullJson)}</textarea></details></div>
+  <div class="backup-section"><div class="backup-section-head"><b>Import</b><span>Choose a file or paste JSON</span></div><label class="file-picker"><input id="backupFile" type="file" accept="application/json,.json"><span>Choose backup file</span></label><textarea class="backup" id="restoreText" placeholder="Or paste backup JSON here"></textarea><div class="import-preview empty-preview" id="importPreview">Select or paste a backup to preview it.</div><div class="restore-modes"><label><input type="radio" name="restoreMode" value="everything" checked> Everything</label><label><input type="radio" name="restoreMode" value="schedule"> Schedule only</label><label><input type="radio" name="restoreMode" value="daily"> Daily data only</label></div><button class="primary full-width" id="restoreBackup" disabled>Restore selected data</button></div>
+  <div class="backup-section compact-actions"><button class="secondary" id="undoRestore" ${localStorage.getItem(UNDO_RESTORE_KEY)?'':'disabled'}>Undo last restore</button><button class="reset-defaults" id="resetDefaults" type="button">Restore current default schedule</button></div>
+  <div class="sheet-actions"><button class="secondary" id="closeBackup">Close</button></div></div>`;
+  document.body.appendChild(wrap);
+  let parsedBackup=null;
+  const restoreText=wrap.querySelector('#restoreText');
+  const preview=wrap.querySelector('#importPreview');
+  const restoreButton=wrap.querySelector('#restoreBackup');
+  const updatePreview=raw=>{
+    try{
+      const obj=validateBackup(JSON.parse(raw));
+      const info=backupSummary(obj);
+      parsedBackup=obj;
+      preview.className='import-preview';
+      preview.innerHTML=`<b>${esc(info.source)}</b><span>Created ${esc(info.created)}</span><span>${info.tasks} tasks · ${info.days} daily records</span>${info.hasDays?'':'<em>Schedule-only backup</em>'}`;
+      restoreButton.disabled=false;
+    }catch{
+      parsedBackup=null;
+      preview.className='import-preview empty-preview';
+      preview.textContent=raw.trim()?'This does not appear to be a valid Planner backup.':'Select or paste a backup to preview it.';
+      restoreButton.disabled=true;
+    }
+  };
+  wrap.onclick=event=>{if(event.target===wrap)wrap.remove()};
+  wrap.querySelector('#closeBackup').onclick=()=>wrap.remove();
+  wrap.querySelector('#deviceLabel').onchange=event=>localStorage.setItem(DEVICE_LABEL_KEY,event.target.value.trim());
+  wrap.querySelector('#downloadFull').onclick=()=>downloadBackup('full');
+  wrap.querySelector('#downloadSchedule').onclick=()=>downloadBackup('schedule');
+  wrap.querySelector('#copyBackup').onclick=()=>copyBackupText(fullJson,wrap.querySelector('#backupText'));
+  wrap.querySelector('#backupFile').onchange=async event=>{
+    const file=event.target.files?.[0];
+    if(!file)return;
+    try{const raw=await file.text();restoreText.value=raw;updatePreview(raw)}catch{toast('Could not read that file')}
+  };
+  restoreText.oninput=()=>updatePreview(restoreText.value);
+  restoreButton.onclick=()=>{
+    if(!parsedBackup)return;
+    const mode=wrap.querySelector('input[name="restoreMode"]:checked').value;
+    const labels={everything:'everything on this device',schedule:'the recurring schedule',daily:'daily history, focus, and notes'};
+    if(!confirm(`Restore ${labels[mode]} from this backup? A local undo snapshot will be saved first.`))return;
+    try{applyBackup(parsedBackup,mode);wrap.remove();render();toast('Backup restored')}
+    catch(error){toast(error.message||'That backup could not be restored')}
+  };
+  wrap.querySelector('#undoRestore').onclick=()=>{wrap.remove();undoLastRestore()};
+  wrap.querySelector('#resetDefaults').onclick=()=>{
+    if(!confirm('Replace your recurring schedule with the current defaults? Completion history will be kept.'))return;
+    saveUndoSnapshot();
+    state.tasks=freshDefaultTasks();
+    saveTasks();
+    wrap.remove();
+    render();
+    toast('Default schedule restored');
+  };
+}
 
 // Interaction helpers and initialization
 function toast(msg){document.querySelector('.toast')?.remove();const x=document.createElement('div');x.className='toast';x.textContent=msg;document.body.appendChild(x);setTimeout(()=>x.remove(),1800)}

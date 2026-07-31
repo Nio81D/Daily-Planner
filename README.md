@@ -1,5 +1,7 @@
 # Daily Planner
 
+**Production version: 1.2.0**
+
 A phone-first progressive web app for recurring schedules, daily focus, task notes, habits, streaks, and local-only history.
 
 ## Production structure
@@ -30,3 +32,13 @@ Planner data remains in browser `localStorage` under the existing `sdp-v1:` name
 - Completed tasks fade to gray, including the icon, check control, and left color border.
 - Free-time gaps are shown as explicit timeline rows.
 - No migration or schema-version framework is included.
+
+
+## Backup and transfer
+
+- Free-time rows open the standard New Block editor with the gap times prefilled.
+- Full backups can be downloaded as JSON files for device-to-device transfer.
+- Schedule-only backups are available for changing the recurring plan without replacing history.
+- Imports support file selection or pasted JSON, preview metadata before restore, and three restore modes.
+- Each restore saves a local undo snapshot first.
+- Give each installation a device name so backup sources are easy to identify.
