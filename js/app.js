@@ -3,7 +3,7 @@
 // Keep this namespace stable so existing on-device data remains available.
 const STORAGE_PREFIX='sdp-v1:';
 const {PALETTE,COLORS,DAYS,WEEKDAYS,DEFAULT_TASKS}=window.PlannerDefaults;
-const {ICON_KEYS,ICON_NAMES,normalizeIconKey,inferIcon,iconSvg,taskIcon}=window.PlannerIcons;
+const {ICON_KEYS,ICON_NAMES,normalizeIconKey,inferIcon,iconHtml,taskIcon}=window.PlannerIcons;
 
 function freshDefaultTasks(){
   return DEFAULT_TASKS.map(task=>({...task,days:[...task.days]}));
@@ -79,16 +79,16 @@ const t=state.editing||{label:'',start:540,end:600,days:[state.date.getDay()],co
 const initialIcon=normalizeIconKey(t.icon||inferIcon(t.label));
 const wrap=document.createElement('div');wrap.className='sheet-wrap';
 wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>${id?'Edit block':'New block'}</h3>
-<div class="icon-preview" style="--preview-color:${t.color}"><div class="icon-preview-box" id="iconPreview">${iconSvg(initialIcon)}</div><div class="icon-preview-copy"><b id="previewName">${esc(t.label||'New block')}</b><small id="previewIconName">${ICON_NAMES[initialIcon]}</small></div></div>
+<div class="icon-preview" style="--preview-color:${t.color}"><div class="icon-preview-box" id="iconPreview">${iconHtml(initialIcon)}</div><div class="icon-preview-copy"><b id="previewName">${esc(t.label||'New block')}</b><small id="previewIconName">${ICON_NAMES[initialIcon]}</small></div></div>
 <div class="field"><label>Name</label><input id="fLabel" value="${esc(t.label)}" placeholder="What are you doing?"></div>
-<div class="field"><label>Icon</label><div class="icon-grid">${ICON_KEYS.map(k=>`<button type="button" class="icon-choice ${initialIcon===k?'on':''}" data-icon="${k}" aria-label="${ICON_NAMES[k]}">${iconSvg(k)}<span>${ICON_NAMES[k]}</span></button>`).join('')}</div></div>
+<div class="field"><label>Icon</label><div class="icon-grid">${ICON_KEYS.map(k=>`<button type="button" class="icon-choice ${initialIcon===k?'on':''}" data-icon="${k}" aria-label="${ICON_NAMES[k]}">${iconHtml(k)}<span>${ICON_NAMES[k]}</span></button>`).join('')}</div></div>
 <div class="row"><div class="field"><label>Start</label><input id="fStart" type="time" value="${timeInput(t.start)}"></div><div class="field"><label>End</label><input id="fEnd" type="time" value="${timeInput(t.end)}"></div></div>
 <div class="field"><label>Repeats</label><div class="preset-row"><button type="button" class="preset-btn" data-repeat="weekdays">Weekdays</button><button type="button" class="preset-btn" data-repeat="weekends">Weekends</button><button type="button" class="preset-btn" data-repeat="daily">Every day</button><button type="button" class="preset-btn" data-repeat="once">This day</button></div><div class="days">${DAYS.map((d,i)=>`<button type="button" class="daypick ${t.days.includes(i)?'on':''}" data-daypick="${i}">${d}</button>`).join('')}</div></div>
 <div class="field"><label>Color</label><div class="colors">${COLORS.map(c=>`<button type="button" class="swatch ${t.color===c?'on':''}" style="background:${c}" data-color="${c}" aria-label="Choose color"></button>`).join('')}</div></div>
 <div class="sheet-actions">${id?'<button class="danger" id="deleteTask">Delete</button>':''}<button class="secondary" id="cancelEdit">Cancel</button><button class="primary" id="saveTask">Save</button></div></div>`;
 document.body.appendChild(wrap);
 let selectedDays=new Set(t.days),selectedColor=t.color,selectedIcon=initialIcon;
-const updatePreview=()=>{wrap.querySelector('#iconPreview').innerHTML=iconSvg(selectedIcon);wrap.querySelector('#previewIconName').textContent=ICON_NAMES[selectedIcon];wrap.querySelector('.icon-preview').style.setProperty('--preview-color',selectedColor);wrap.querySelector('#previewName').textContent=wrap.querySelector('#fLabel').value.trim()||'New block'};
+const updatePreview=()=>{wrap.querySelector('#iconPreview').innerHTML=iconHtml(selectedIcon);wrap.querySelector('#previewIconName').textContent=ICON_NAMES[selectedIcon];wrap.querySelector('.icon-preview').style.setProperty('--preview-color',selectedColor);wrap.querySelector('#previewName').textContent=wrap.querySelector('#fLabel').value.trim()||'New block'};
 const syncDays=()=>wrap.querySelectorAll('[data-daypick]').forEach(b=>b.classList.toggle('on',selectedDays.has(+b.dataset.daypick)));
 wrap.onclick=e=>{if(e.target===wrap)wrap.remove()};
 wrap.querySelector('#fLabel').addEventListener('input',updatePreview);

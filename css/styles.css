@@ -48,12 +48,12 @@ h1{font-size:30px;line-height:1.05;margin:0;letter-spacing:-.04em}
 .preset-btn.on{background:color-mix(in srgb,var(--accent) 18%,var(--surface2));border-color:var(--accent);color:var(--text)}
 .icon-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .icon-choice{aspect-ratio:1;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:14px;display:grid;place-items:center;cursor:pointer;position:relative}
-.icon-choice svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon-choice .task-phosphor-icon{font-size:23px;line-height:1;display:block}
 .icon-choice.on{background:color-mix(in srgb,var(--accent) 16%,var(--surface2));border-color:var(--accent);color:var(--accent)}
 .icon-choice span{position:absolute;left:-9999px}
 .icon-preview{display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:11px 12px;margin-bottom:15px}
 .icon-preview-box{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:color-mix(in srgb,var(--preview-color,var(--accent)) 18%,var(--surface2));color:var(--preview-color,var(--accent))}
-.icon-preview-box svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon-preview-box .task-phosphor-icon{font-size:25px;line-height:1;display:block}
 .icon-preview-copy b{display:block;font-size:14px}.icon-preview-copy small{display:block;color:var(--muted);margin-top:3px}
 .sheet-actions{display:flex;gap:10px;margin-top:22px}.sheet-actions button{min-height:56px}.backup{white-space:pre-wrap;width:100%;min-height:150px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:12px;font-family:ui-monospace,monospace;font-size:11px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--safe-bottom));background:#f2f4f7;color:#11141a;padding:11px 15px;border-radius:14px;font-size:13px;font-weight:700;z-index:80;box-shadow:0 10px 25px rgba(0,0,0,.35)}
@@ -108,7 +108,7 @@ body{overscroll-behavior-y:none}
 .week-day:active,.nav-item:active,.structured-row:active,.habit:active,.task:active{transform:scale(.975)}
 .fab{border-radius:50%;background:linear-gradient(145deg,#60a5fa,var(--accent));box-shadow:0 18px 34px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.12) inset}.fab:active{transform:scale(.92)}
 .bottom-nav{box-shadow:0 -14px 35px rgba(0,0,0,.18)}
-.nav-icon{width:28px;height:24px;display:grid;place-items:center}.nav-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.nav-icon{width:28px;height:24px;display:grid;place-items:center}.nav-icon .task-phosphor-icon{font-size:21px;line-height:1;display:block}
 .card{box-shadow:0 12px 34px rgba(0,0,0,.18),0 1px 0 rgba(255,255,255,.025) inset}
 .hero{animation:heroIn .35s var(--ease)}
 .hero.current-hero{border-color:color-mix(in srgb,var(--hero-color) 42%,var(--line))}
@@ -143,20 +143,20 @@ body{background:var(--bg)}
 .habit-row{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text);display:grid;grid-template-columns:42px minmax(0,1fr) 18px;gap:12px;align-items:center;text-align:left;padding:15px 14px;cursor:pointer}
 .habit-row:last-child{border-bottom:0}.habit-row:active{background:rgba(255,255,255,.025)}
 .habit-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
-.habit-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.habit-icon .task-phosphor-icon{font-size:21px;line-height:1;display:block}
 .habit-main{display:block;min-width:0}.habit-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.habit-top b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.habit-top strong{font-size:12px;color:var(--accent);font-weight:750;white-space:nowrap}
 .habit-sub{display:block;color:var(--muted);font-size:11px;margin-top:4px}.habit-progress{display:block;height:5px;border-radius:999px;background:var(--surface3);overflow:hidden;margin-top:9px}.habit-progress i{display:block;height:100%;background:var(--accent);border-radius:inherit}
 .week-dots{display:flex;gap:5px;margin-top:8px}.week-dots span{width:7px;height:7px;border-radius:50%;background:var(--surface3)}.week-dots span.on{background:var(--accent)}.week-dots span.na{opacity:.28}.habit-chevron{color:var(--muted);font-size:23px;font-weight:300}
 .icon-choice{color:var(--muted)}.icon-choice.on{color:var(--accent);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg))}
-.icon-choice svg,.icon-preview-box svg{stroke-width:1.8}
+
 .swatch{box-shadow:0 0 0 1px rgba(255,255,255,.08) inset}.swatch.on{border-color:var(--text)}
 @media(min-width:700px){.habit-list{max-width:100%}}
 
 /* Task icons and color accents */
 .structured-node{background:var(--item-color);color:#fff;border:0;box-shadow:0 0 0 4px var(--surface),0 7px 18px color-mix(in srgb,var(--item-color) 28%,transparent)}
 .structured-row.current .structured-node{box-shadow:0 0 0 4px var(--surface),0 8px 24px color-mix(in srgb,var(--item-color) 48%,transparent)}
-.task-svg-icon{width:22px;height:22px;display:block}
-.icon-choice .task-svg-icon{width:24px;height:24px}.icon-preview-box .task-svg-icon{width:26px;height:26px}
+.task-phosphor-icon{font-size:22px;line-height:1;display:block}
+.icon-choice .task-phosphor-icon{font-size:24px}.icon-preview-box .task-phosphor-icon{font-size:26px}
 .habit-icon{background:color-mix(in srgb,var(--habit-color) 18%,var(--surface2));color:var(--habit-color);border-color:color-mix(in srgb,var(--habit-color) 30%,var(--line))}
 .habit-top strong{color:var(--habit-color)}
 .habit-progress i{background:var(--habit-color)}

@@ -1,34 +1,64 @@
-# Daily Planner
+const CACHE_REVISION = '2026-07-31-c';
+const CACHE_NAME = `planner-static-${CACHE_REVISION}`;
 
-A phone-first personal planner designed for GitHub Pages and installation as an iPhone Home Screen web app.
+const APP_SHELL = [
+  './',
+  './index.html',
+  './css/styles.css',
+  './js/defaults.js',
+  './js/icons.js',
+  './js/app.js',
+  './manifest.webmanifest',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png',
+  './assets/icons/apple-touch-icon.png',
+  './assets/icons/favicon-32.png'
+];
 
-## Project structure
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
+  self.skipWaiting();
+});
 
-- `index.html` loads the application and the Phosphor icon CDN.
-- `css/styles.css` contains the visual design.
-- `js/defaults.js` contains the default schedule, task names, colors, and icon names.
-- `js/icons.js` maps task labels and saved icon names to Phosphor classes.
-- `js/app.js` contains planner behavior and local-storage logic.
-- `sw.js` provides offline caching for local application files.
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+    ))
+  );
+  self.clients.claim();
+});
 
-## Icons
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
 
-The planner uses Phosphor Icons through this pinned CDN dependency:
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
 
-```html
-<script src="https://unpkg.com/@phosphor-icons/web@2.1.1" defer></script>
-```
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          caches.open(CACHE_NAME).then(cache => cache.put('./index.html', response.clone()));
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
 
-Task icon names remain isolated in `js/defaults.js` and `js/icons.js`. The CDN can later be replaced with locally hosted Phosphor assets without changing task data or application behavior.
+  event.respondWith(
+    caches.match(event.request).then(cachedResponse => {
+      const networkResponse = fetch(event.request)
+        .then(response => {
+          if (response.ok) {
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, response.clone()));
+          }
+          return response;
+        })
+        .catch(() => cachedResponse);
 
-The planner interface and stored data continue to work offline after the local application shell has been cached. Phosphor icons require network access unless the browser has already cached the CDN asset.
-
-## Deployment
-
-Upload the repository contents to GitHub and deploy from the `main` branch using GitHub Pages.
-
-When deployed files change, update `CACHE_REVISION` near the top of `sw.js` so installed copies retrieve the latest local files.
-
-## Storage
-
-Schedules, completion history, and streaks are stored in the browser under the existing `sdp-v1:` local-storage namespace. The repository does not contain personal planner data.
+      return cachedResponse || networkResponse;
+    })
+  );
+});
