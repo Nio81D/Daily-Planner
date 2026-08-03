@@ -1,4 +1,4 @@
-# Planner PROD 2.1
+# Daily Planner
 
 **Production version: 2.0.0**
 
@@ -47,12 +47,3 @@ Full and schedule backups use backup schema version 4 and include both habits an
 3. Run JavaScript syntax checks and habit-model tests.
 4. Commit and push to GitHub Pages.
 5. Refresh the Pages URL, then reopen the installed PWA.
-
-## PROD 2.1
-
-- Renames Learning & Growth to Career and assigns the red habit color.
-- Links the default Work block to Career.
-- Assigns Markets & Investing to orange and Mindfulness to purple.
-- Adds completion-state dots to the compact Today weekly calendar.
-- Replaces Calendar progress dots with an Overall completion heatmap.
-- Adds a Habits matrix toggle for day-by-day habit progress.

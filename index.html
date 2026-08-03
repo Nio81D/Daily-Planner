@@ -1,34 +1,102 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#0b0d12">
-  <meta name="description" content="A private, phone-first daily planner with schedules, central habits, progress, and local storage.">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Planner">
-  <title>Planner</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32.png">
-  <link rel="stylesheet" href="./css/styles.css">
-  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1" defer></script>
-  <script src="./js/defaults.js" defer></script>
-  <script src="./js/icons.js" defer></script>
-  <script src="./js/habit-model.js" defer></script>
-  <script src="./js/app.js" defer></script>
-</head>
-<body>
-  <div id="app" class="app"></div>
-  <nav class="bottom-nav" id="bottomNav" aria-label="Primary navigation"></nav>
-  <button class="fab" id="fab" type="button" aria-label="Add task">+</button>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(console.error);
-      });
-    }
-  </script>
-</body>
-</html>
+'use strict';
+
+// Phosphor icon names used by the planner. The icon library is loaded in index.html.
+const ICON_KEYS = [
+  'trend-up',
+  'briefcase',
+  'book-open',
+  'barbell',
+  'fork-knife',
+  'moon-stars',
+  'person-simple-run',
+  'flag',
+  'shower',
+  'car',
+  'coffee',
+  'notebook',
+  'laptop',
+  'clock',
+  'check-circle'
+];
+
+const ICON_NAMES = {
+  'trend-up': 'Markets',
+  briefcase: 'Work',
+  'book-open': 'Study',
+  barbell: 'Fitness',
+  'fork-knife': 'Meal',
+  'moon-stars': 'Wind down',
+  'person-simple-run': 'Run',
+  flag: 'Golf',
+  shower: 'Shower',
+  car: 'Travel',
+  coffee: 'Break',
+  notebook: 'Journal',
+  laptop: 'Computer',
+  clock: 'Time block',
+  'check-circle': 'General'
+};
+
+function normalizeIconKey(key = '') {
+  const aliases = {
+    chart: 'trend-up',
+    'trending-up': 'trend-up',
+    book: 'book-open',
+    run: 'person-simple-run',
+    'person-standing': 'person-simple-run',
+    golf: 'flag',
+    'shower-head': 'shower',
+    journal: 'notebook',
+    'notebook-pen': 'notebook',
+    'clock-3': 'clock',
+    check: 'check-circle',
+    'circle-check': 'check-circle',
+    dumbbell: 'barbell',
+    utensils: 'fork-knife',
+    moon: 'moon-stars'
+  };
+
+  return aliases[key] || key || 'check-circle';
+}
+
+function inferIcon(label = '') {
+  const value = label.toLowerCase();
+
+  if (/run|jog/.test(value)) return 'person-simple-run';
+  if (/gym|workout|yoga|fitness/.test(value)) return 'barbell';
+  if (/golf/.test(value)) return 'flag';
+  if (/shower/.test(value)) return 'shower';
+  if (/breakfast|dinner|lunch|eat|meal/.test(value)) return 'fork-knife';
+  if (/journal/.test(value)) return 'notebook';
+  if (/read|study|research|deep dive|model/.test(value)) return 'book-open';
+  if (/market|trade|portfolio/.test(value)) return 'trend-up';
+  if (/commute|bike|drive|travel/.test(value)) return 'car';
+  if (/sleep|wind.down|meditat/.test(value)) return 'moon-stars';
+  if (/job|work|email/.test(value)) return 'briefcase';
+  if (/python|computer|laptop|code/.test(value)) return 'laptop';
+  if (/coffee|break/.test(value)) return 'coffee';
+
+  return 'check-circle';
+}
+
+function iconHtml(rawKey = 'check-circle') {
+  const key = normalizeIconKey(rawKey);
+  return '<i class="ph ph-' + key + ' task-phosphor-icon" aria-hidden="true"></i>';
+}
+
+function taskIcon(taskOrLabel = '') {
+  if (typeof taskOrLabel === 'object') {
+    return iconHtml(normalizeIconKey(taskOrLabel.icon) || inferIcon(taskOrLabel.label));
+  }
+
+  return iconHtml(inferIcon(taskOrLabel));
+}
+
+window.PlannerIcons = Object.freeze({
+  ICON_KEYS,
+  ICON_NAMES,
+  normalizeIconKey,
+  inferIcon,
+  iconHtml,
+  taskIcon
+});
