@@ -89,8 +89,8 @@ for(const h of state.habits){
  const pct=total?Math.round(completed/total*100):0;
  rows.push(`<div class="habit-card" style="--habit-color:${h.color}"><div class="habit-header"><span class="habit-icon">${iconHtml(h.icon)}</span><b>${esc(h.name)}</b><strong>${pct}%</strong></div><div class="habit-progress"><i style="width:${pct}%"></i></div><div class="habit-linked">${linked.map(t=>`<span>${iconFor(t)} ${esc(t.label)}</span>`).join('')}</div></div>`)
 }
-app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">Consistency</div><h1>Habits</h1></div></div><div class="habit-list">${rows.join('')}</div>`;
-bindBase();
+app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">Consistency</div><h1>Habits</h1></div><button id="newHabit">+ New Habit</button></div><div class="habit-list">${rows.join('')}</div>`;
+bindBase();document.getElementById('newHabit').onclick=()=>openHabitEditor();
 }
 async function renderStats(){const app=document.getElementById('app'),today=strip(new Date());let done30=0,total30=0,done7=0,total7=0,totalMinutes=0;const byDay=[];for(let i=29;i>=0;i--){const d=addDays(today,-i),ts=tasksOn(d),dn=ts.filter(t=>getDay(d)[t.id]?.done).length;total30+=ts.length;done30+=dn;if(i<7){total7+=ts.length;done7+=dn}ts.forEach(t=>{if(getDay(d)[t.id]?.done)totalMinutes+=Math.max(0,t.end-t.start)});byDay.push(ts.length?Math.round(dn/ts.length*100):0)}let best=0;for(const t of state.tasks)best=Math.max(best,await streak(t,today));const p30=total30?Math.round(done30/total30*100):0,p7=total7?Math.round(done7/total7*100):0;app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">Your progress</div><h1>Stats</h1></div></div><div class="stats-grid"><div class="stat"><div class="stat-num">${p7}%</div><div class="stat-label">Last 7 days</div></div><div class="stat"><div class="stat-num">${p30}%</div><div class="stat-label">Last 30 days</div></div><div class="stat"><div class="stat-num">${best}</div><div class="stat-label">Best current streak</div></div><div class="stat"><div class="stat-num">${(totalMinutes/60).toFixed(1)}</div><div class="stat-label">Completed hours · 30d</div></div><div class="stat wide"><div class="progress-title">Recent consistency</div>${[7,14,30].map(n=>{const vals=byDay.slice(-n),p=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;return `<div class="bar-row"><div class="bar-label"><span>${n} day average</span><b>${p}%</b></div><div class="bar-track"><div class="bar-fill" style="width:${p}%"></div></div></div>`}).join('')}</div><div class="stat wide"><div class="progress-title">Data stays on this device</div><div class="progress-sub">Use Backup from the top-right menu to protect schedule and history.</div></div></div>`;bindBase()}
 function bindTasks(){document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=e=>{e.stopPropagation();const row=b.closest('.structured-row,.task');if(row){row.classList.add('completing');setTimeout(()=>toggle(b.dataset.toggle),150)}else toggle(b.dataset.toggle)});document.querySelectorAll('[data-edit]').forEach(x=>x.onclick=()=>openEditor(x.dataset.edit));document.querySelectorAll('.structured-row[data-edit]').forEach(row=>{let timer=null,moved=false;row.addEventListener('touchstart',()=>{moved=false;timer=setTimeout(()=>{navigator.vibrate?.(12);openEditor(row.dataset.edit)},520)},{passive:true});row.addEventListener('touchmove',()=>{moved=true;clearTimeout(timer)},{passive:true});row.addEventListener('touchend',()=>clearTimeout(timer),{passive:true});row.addEventListener('touchcancel',()=>clearTimeout(timer),{passive:true})})}
@@ -129,6 +129,18 @@ const del=wrap.querySelector('#deleteTask');if(del)del.onclick=()=>{state.tasks=
 wrap.querySelector('#saveTask').onclick=()=>{const label=wrap.querySelector('#fLabel').value.trim(),start=fromTime(wrap.querySelector('#fStart').value),end=fromTime(wrap.querySelector('#fEnd').value);if(!label)return toast('Add a name');if(!selectedDays.size)return toast('Choose at least one day');if(end<=start)return toast('End time must be later');let savedId=id;const habitId=wrap.querySelector('#fHabit')?.value||null; if(habitId){const habit=state.habits.find(h=>h.id===habitId);if(habit)selectedColor=habit.color;} if(id){Object.assign(state.editing,{label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon,habitId})}else{savedId='t'+Date.now();state.tasks.push({id:savedId,label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon,habitId})}saveTasks();saveTaskNote(savedId,wrap.querySelector('#fNote').value,state.date);wrap.remove();render()}
 }
 
+
+function openHabitEditor(id=null){
+ const existing=id?state.habits.find(h=>h.id===id):null;
+ const h=existing||{name:'',color:COLORS[0],icon:'check-circle'};
+ const wrap=document.createElement('div');wrap.className='sheet-wrap';
+ wrap.innerHTML=`<div class="sheet"><h3>${id?'Edit habit':'New habit'}</h3><div class="field"><label>Name</label><input id="hName" value="${esc(h.name)}"></div><div class="field"><label>Color</label><div class="colors">${COLORS.map(c=>`<button class="swatch ${c===h.color?'on':''}" data-hcolor="${c}" style="background:${c}"></button>`).join('')}</div></div><div class="sheet-actions"><button id="hCancel" class="secondary">Cancel</button><button id="hSave" class="primary">Save</button></div></div>`;
+ document.body.appendChild(wrap);
+ let color=h.color;
+ wrap.querySelectorAll('[data-hcolor]').forEach(b=>b.onclick=()=>{color=b.dataset.hcolor});
+ wrap.querySelector('#hCancel').onclick=()=>wrap.remove();
+ wrap.querySelector('#hSave').onclick=()=>{const name=wrap.querySelector('#hName').value.trim();if(!name)return; if(id){Object.assign(existing,{name,color})}else{state.habits.push({id:'h'+Date.now(),name,color,icon:'check-circle'})} saveHabits();wrap.remove();render()};
+}
 // Backup and transfer
 const DEVICE_LABEL_KEY=STORAGE_PREFIX+'device-label';
 const UNDO_RESTORE_KEY=STORAGE_PREFIX+'undo-restore';
