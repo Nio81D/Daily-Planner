@@ -107,9 +107,11 @@ function calendarDaySnapshot(d){
   const all=dayProgress(d);
   const rows=scheduledHabits.map(({habit,progress})=>{
     const label=progress.state==='complete'?'Complete':progress.state==='partial'?'Partial':'Missed';
-    return `<div class="snapshot-habit" style="--habit-color:${habit.color}"><i></i><span>${esc(habit.label)}</span><b>${label}</b></div>`;
+    const percent=progress.total?Math.round(progress.completed/progress.total*100):0;
+    const mark=progress.state==='complete'?'✓':progress.state==='partial'?'◐':'×';
+    return `<div class="snapshot-habit ${progress.state}" style="--habit-color:${habit.color};--habit-progress:${percent}%"><span class="snapshot-habit-mark">${mark}</span><span class="snapshot-habit-copy"><b>${esc(habit.label)}</b><small>${progress.completed} of ${progress.total} blocks</small></span><span class="snapshot-status">${label}</span><span class="snapshot-mini-track"><i></i></span></div>`;
   }).join('');
-  return `<div class="card day-snapshot"><div class="snapshot-head"><div><div class="kicker">Day snapshot</div><h3>${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</h3></div><strong>${all.percent===null?'—':`${all.percent}%`}</strong></div>${rows||'<div class="snapshot-empty">No habits were scheduled for this day.</div>'}<div class="snapshot-footer"><span>${all.total?`${all.completed} of ${all.total} blocks completed`:'No recurring blocks scheduled'}</span>${dailyFocus(d)?`<small><b>Focus</b>${esc(dailyFocus(d))}</small>`:''}<button id="openDay">Open day <span>→</span></button></div></div>`;
+  return `<div class="card day-snapshot"><div class="snapshot-head"><div><div class="kicker">Day snapshot</div><h3>${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}</h3></div><div class="snapshot-head-actions"><strong>${all.percent===null?'—':`${all.percent}%`}</strong><button id="openDay">Open day <span>→</span></button></div></div>${rows||'<div class="snapshot-empty">No habits were scheduled for this day.</div>'}<div class="snapshot-footer"><span>${all.total?`${all.completed} of ${all.total} blocks completed`:'No recurring blocks scheduled'}</span>${dailyFocus(d)?`<small><b>Focus</b>${esc(dailyFocus(d))}</small>`:''}</div></div>`;
 }
 async function renderCalendar(){
   const app=document.getElementById('app'),m=state.month,first=new Date(m.getFullYear(),m.getMonth(),1),start=addDays(first,-((first.getDay()+6)%7));
