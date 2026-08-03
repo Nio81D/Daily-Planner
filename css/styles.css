@@ -1769,3 +1769,20 @@ button:disabled {
   opacity: .45;
   cursor: not-allowed;
 }
+
+/* PROD 2.0: habit selector uses the existing field visual system. */
+.field select {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 13px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color .18s,box-shadow .18s;
+}
+.field select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent);
+}
