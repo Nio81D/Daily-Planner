@@ -1,8 +1,5 @@
 const CACHE_REVISION = '2026-07-31-i';
-const CACHE_NAME = `planner-static-${CACHE_REVISION}`;
-
-const APP_SHELL = [
-  './',
+const CACHE_NAME = `planner-prod-1.3.0'./',
   './index.html',
   './css/styles.css',
   './js/defaults.js',

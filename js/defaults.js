@@ -10,6 +10,13 @@ const PALETTE=Object.freeze({
 });
 const COLORS=Object.freeze(Object.values(PALETTE));
 const DAYS=['S','M','T','W','T','F','S'];
+const DEFAULT_HABITS=Object.freeze([
+{id:'h1',name:'Fitness & Sports',color:PALETTE.green,icon:'barbell'},
+{id:'h2',name:'Trading & Investing',color:PALETTE.gold,icon:'trend-up'},
+{id:'h3',name:'Career',color:PALETTE.coral,icon:'briefcase'},
+{id:'h4',name:'Wind Down',color:PALETTE.purple,icon:'moon-stars'},
+{id:'h5',name:'Self Care',color:PALETTE.blue,icon:'heart'}
+]);
 const WEEKDAYS=Object.freeze([1,2,3,4,5]);
 
 // Default schedule. Edit task names, times, days, colors, and icons here.
@@ -29,4 +36,9 @@ const DEFAULT_TASKS=Object.freeze([
 {id:'t19',label:'Weekly Review',start:840,end:960,days:[0],color:PALETTE.gold,icon:'check-circle'}
 ]);
 
-window.PlannerDefaults=Object.freeze({PALETTE,COLORS,DAYS,WEEKDAYS,DEFAULT_TASKS});
+
+// Habit links are independent from task icons.
+const HABIT_LINKS={
+'t1':'h1','t2':'h5','t3':'h2','t5':'h3','t6':'h1','t8':'h5','t13':'h3','t14':'h2','t15':'h4','t16':'h1','t17':'h2','t18':'h1','t19':'h3'
+};
+window.PlannerDefaults=Object.freeze({PALETTE,COLORS,DAYS,WEEKDAYS,DEFAULT_TASKS,DEFAULT_HABITS,HABIT_LINKS});
