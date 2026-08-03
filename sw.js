@@ -1,4 +1,4 @@
-const CACHE_REVISION = '2026-08-03-prod-2.0';
+const CACHE_REVISION = '2026-08-03-prod-2.1';
 const CACHE_NAME = `planner-static-${CACHE_REVISION}`;
 
 const APP_SHELL = [

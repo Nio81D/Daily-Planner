@@ -10,7 +10,24 @@ const {ICON_KEYS,ICON_NAMES,normalizeIconKey,inferIcon,iconHtml,taskIcon}=window
 function freshDefaultTasks(){return DEFAULT_TASKS.map(cloneTask)}
 function freshDefaultHabits(){return DEFAULT_HABITS.map(cloneHabit)}
 
-const state={tab:'today',date:strip(new Date()),month:strip(new Date()),habits:loadJSON(STORAGE_PREFIX+'habits',null)||freshDefaultHabits(),tasks:loadJSON(STORAGE_PREFIX+'tasks',null)||freshDefaultTasks(),dayCache:{},editing:null};
+const state={tab:'today',date:strip(new Date()),month:strip(new Date()),calendarMode:'overall',habits:loadJSON(STORAGE_PREFIX+'habits',null)||freshDefaultHabits(),tasks:loadJSON(STORAGE_PREFIX+'tasks',null)||freshDefaultTasks(),dayCache:{},editing:null};
+const PROD_RELEASE='2.1';
+function applyProd21Defaults(){
+  const releaseKey=STORAGE_PREFIX+'release';
+  if(localStorage.getItem(releaseKey)===PROD_RELEASE)return;
+  const career=state.habits.find(h=>h.id==='h-learning');
+  if(career)Object.assign(career,{label:'Career',color:PALETTE.coral,icon:'briefcase'});
+  const markets=state.habits.find(h=>h.id==='h-markets');
+  if(markets)markets.color=PALETTE.gold;
+  const mindfulness=state.habits.find(h=>h.id==='h-mindfulness');
+  if(mindfulness)mindfulness.color=PALETTE.purple;
+  const work=state.tasks.find(t=>t.id==='t5');
+  if(work)work.habitId='h-learning';
+  saveJSON(STORAGE_PREFIX+'habits',state.habits);
+  saveJSON(STORAGE_PREFIX+'tasks',state.tasks);
+  localStorage.setItem(releaseKey,PROD_RELEASE);
+}
+applyProd21Defaults();
 function strip(d){const x=new Date(d);x.setHours(0,0,0,0);return x}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
 
@@ -44,6 +61,16 @@ function toggle(id,d=state.date){const data=getDay(d);data[id]={...(data[id]||{}
 // Progress calculations
 function habitSummary(habit,from=state.date){return habitWeekSummary(habit,state.tasks,getDay,from)}
 function habitStreak(habit,from=state.date){return habitWeekStreak(habit,state.tasks,getDay,from)}
+function dayProgress(d,tasks=tasksOn(d)){
+  const completed=tasks.filter(t=>getDay(d)[t.id]?.done).length;
+  const total=tasks.length;
+  return {completed,total,percent:total?Math.round(completed/total*100):null,state:!total?'empty':completed===0?'none':completed===total?'complete':'partial'};
+}
+function habitDayProgress(habit,d){
+  const linked=tasksOn(d).filter(t=>t.habitId===habit.id);
+  const completed=linked.filter(t=>getDay(d)[t.id]?.done).length;
+  return {completed,total:linked.length,state:!linked.length?'empty':completed===0?'none':completed===linked.length?'complete':'partial'};
+}
 function greeting(){const h=new Date().getHours();return h<12?'Good morning':h<17?'Good afternoon':'Good evening'}
 
 // Shared interface rendering
@@ -55,7 +82,7 @@ function nav(){const items=[['today','Today'],['calendar','Calendar'],['habits',
 async function renderToday(){
 const app=document.getElementById('app'),d=state.date,tasks=tasksOn(d),data=getDay(d),done=tasks.filter(t=>data[t.id]?.done).length,pct=tasks.length?Math.round(done/tasks.length*100):0,cur=currentTask(tasks,d),next=nextTask(tasks,d),hero=cur||next;
 const weekStart=addDays(d,-((d.getDay()+6)%7));
-const weekStrip=Array.from({length:7},(_,i)=>{const wd=addDays(weekStart,i),active=dateKey(wd)===dateKey(d),hasTasks=tasksOn(wd).length>0;return `<button class="week-day ${active?'active':''} ${isToday(wd)?'today':''}" data-weekdate="${dateKey(wd)}"><b>${wd.toLocaleDateString(undefined,{weekday:'short'}).slice(0,3).toUpperCase()}</b><span>${wd.getDate()}</span>${hasTasks?'<i></i>':''}</button>`}).join('');
+const weekStrip=Array.from({length:7},(_,i)=>{const wd=addDays(weekStart,i),active=dateKey(wd)===dateKey(d),progress=dayProgress(wd);return `<button class="week-day ${active?'active':''} ${isToday(wd)?'today':''}" data-weekdate="${dateKey(wd)}" aria-label="${wd.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}: ${progress.total?`${progress.completed} of ${progress.total} blocks complete`:'no scheduled blocks'}"><b>${wd.toLocaleDateString(undefined,{weekday:'short'}).slice(0,3).toUpperCase()}</b><span>${wd.getDate()}</span><i class="week-progress ${progress.state}" title="${progress.total?`${progress.completed} of ${progress.total} complete`:'No scheduled blocks'}"></i></button>`}).join('');
 const n=nowMinutes();
 let rows='';
 for(let i=0;i<tasks.length;i++){
@@ -74,11 +101,32 @@ bindBase();const focusInput=document.getElementById('dailyFocus');let focusTimer
 
 // Calendar view
 function taskHTML(t,d,current=false){const done=!!taskState(t,d).done,note=taskNote(t,d);return `<div class="task ${done?'done':''} ${current?'current':''}" style="--task-color:${t.color}" data-edit="${t.id}"><button class="check" data-toggle="${t.id}" aria-label="Toggle ${esc(t.label)}">${done?'✓':''}</button><div><div class="task-name">${esc(t.label)}</div><div class="task-meta">${mins(t.start)} – ${mins(t.end)}</div>${note?`<div class="task-note">${esc(note)}</div>`:''}</div><i class="task-dot"></i></div>`}
-async function renderCalendar(){const app=document.getElementById('app'),m=state.month,first=new Date(m.getFullYear(),m.getMonth(),1),start=addDays(first,-((first.getDay()+6)%7)),cells=[];for(let i=0;i<42;i++){const d=addDays(start,i),ts=tasksOn(d),dn=ts.filter(t=>getDay(d)[t.id]?.done).length,cnt=Math.min(dn,3);cells.push(`<button class="day ${d.getMonth()!==m.getMonth()?'other':''} ${isToday(d)?'today':''} ${dateKey(d)===dateKey(state.date)?'selected':''}" data-date="${dateKey(d)}"><span>${d.getDate()}</span><span class="mini">${'<i></i>'.repeat(cnt)}</span></button>`)}
-const selected=tasksOn(state.date);app.innerHTML=top()+`<div class="month-head"><h2>${m.toLocaleDateString(undefined,{month:'long',year:'numeric'})}</h2><div class="month-controls"><button id="prevMonth">‹</button><button id="nextMonth">›</button></div></div><div class="card"><div class="calendar">${['M','T','W','T','F','S','S'].map(x=>`<div class="dow">${x}</div>`).join('')}${cells.join('')}</div></div><div class="section-head"><h2>${state.date.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})}</h2><button id="openDay">Open day</button></div><div class="task-list">${selected.length?selected.map(t=>taskHTML(t,state.date,false)).join(''):`<div class="empty"><b>No blocks</b>This day has no recurring schedule.</div>`}</div>`;
-bindBase();document.getElementById('prevMonth').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()-1,1);render()};document.getElementById('nextMonth').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()+1,1);render()};document.getElementById('openDay').onclick=()=>{state.tab='today';render()};document.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{state.date=new Date(b.dataset.date+'T00:00:00');state.month=new Date(state.date.getFullYear(),state.date.getMonth(),1);render()});bindTasks()}
+async function renderCalendar(){
+  const app=document.getElementById('app'),m=state.month,first=new Date(m.getFullYear(),m.getMonth(),1),start=addDays(first,-((first.getDay()+6)%7));
+  const dayCells=[];
+  for(let i=0;i<42;i++){
+    const d=addDays(start,i),progress=dayProgress(d),outside=d.getMonth()!==m.getMonth();
+    dayCells.push(`<button class="heat-day ${outside?'other':''} ${isToday(d)?'today':''} ${dateKey(d)===dateKey(state.date)?'selected':''} level-${progress.percent===null?'empty':progress.percent<40?'low':progress.percent<80?'mid':'high'}" data-date="${dateKey(d)}" aria-label="${d.toLocaleDateString(undefined,{month:'long',day:'numeric'})}: ${progress.total?`${progress.percent}% complete`:'no scheduled blocks'}"><span>${d.getDate()}</span><small>${progress.percent===null?'':`${progress.percent}%`}</small></button>`);
+  }
+  const daysInMonth=new Date(m.getFullYear(),m.getMonth()+1,0).getDate();
+  const matrixHead=Array.from({length:daysInMonth},(_,i)=>`<button class="matrix-date-head ${dateKey(new Date(m.getFullYear(),m.getMonth(),i+1))===dateKey(state.date)?'selected':''}" data-date="${dateKey(new Date(m.getFullYear(),m.getMonth(),i+1))}"><b>${i+1}</b><span>${new Date(m.getFullYear(),m.getMonth(),i+1).toLocaleDateString(undefined,{weekday:'short'}).slice(0,1)}</span></button>`).join('');
+  const matrixRows=state.habits.map(habit=>{
+    const cells=Array.from({length:daysInMonth},(_,i)=>{const d=new Date(m.getFullYear(),m.getMonth(),i+1),progress=habitDayProgress(habit,d);return `<button class="matrix-cell ${progress.state} ${dateKey(d)===dateKey(state.date)?'selected':''}" style="--habit-color:${habit.color}" data-date="${dateKey(d)}" aria-label="${habit.label}, ${d.toLocaleDateString(undefined,{month:'long',day:'numeric'})}: ${progress.total?`${progress.completed} of ${progress.total} complete`:'not scheduled'}"><i></i></button>`}).join('');
+    return `<div class="matrix-row-label" style="--habit-color:${habit.color}"><i></i><span>${esc(habit.label)}</span></div><div class="matrix-row-cells" style="--matrix-days:${daysInMonth}">${cells}</div>`;
+  }).join('');
+  const overall=`<div class="card calendar-card"><div class="calendar heat-calendar">${['M','T','W','T','F','S','S'].map(x=>`<div class="dow">${x}</div>`).join('')}${dayCells.join('')}</div><div class="heat-legend"><span>Less</span><i class="level-empty"></i><i class="level-low"></i><i class="level-mid"></i><i class="level-high"></i><span>More</span></div></div>`;
+  const habits=`<div class="card matrix-card"><div class="habit-matrix"><div class="matrix-corner">Habit</div><div class="matrix-head-cells" style="--matrix-days:${daysInMonth}">${matrixHead}</div>${matrixRows||'<div class="matrix-empty">No habits yet</div>'}</div><div class="matrix-legend"><span><i class="empty"></i>Not scheduled</span><span><i class="none"></i>Missed</span><span><i class="partial"></i>Partial</span><span><i class="complete"></i>Complete</span></div></div>`;
+  const selected=tasksOn(state.date);
+  app.innerHTML=top()+`<div class="month-head"><h2>${m.toLocaleDateString(undefined,{month:'long',year:'numeric'})}</h2><div class="month-controls"><button id="prevMonth">‹</button><button id="nextMonth">›</button></div></div><div class="calendar-toggle" role="tablist"><button class="${state.calendarMode==='overall'?'active':''}" data-calendar-mode="overall">Overall</button><button class="${state.calendarMode==='habits'?'active':''}" data-calendar-mode="habits">Habits</button></div>${state.calendarMode==='overall'?overall:habits}<div class="section-head"><h2>${state.date.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})}</h2><button id="openDay">Open day</button></div><div class="task-list">${selected.length?selected.map(t=>taskHTML(t,state.date,false)).join(''):`<div class="empty"><b>No blocks</b>This day has no recurring schedule.</div>`}</div>`;
+  bindBase();
+  document.getElementById('prevMonth').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()-1,1);render()};
+  document.getElementById('nextMonth').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()+1,1);render()};
+  document.querySelectorAll('[data-calendar-mode]').forEach(button=>button.onclick=()=>{state.calendarMode=button.dataset.calendarMode;render()});
+  document.querySelectorAll('[data-date]').forEach(button=>button.onclick=()=>{state.date=new Date(button.dataset.date+'T00:00:00');render()});
+  document.getElementById('openDay').onclick=()=>{state.tab='today';render()};
+  bindTasks();
+}
 
-// Habits and statistics views
 async function renderHabits(){
 const app=document.getElementById('app'),today=strip(new Date()),rows=[];
 for(const habit of state.habits){
