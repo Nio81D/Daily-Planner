@@ -3,14 +3,15 @@
 // Keep this namespace stable so existing on-device data remains available.
 // Storage and application state
 const STORAGE_PREFIX='sdp-v1:';
-const {PALETTE,COLORS,DAYS,WEEKDAYS,DEFAULT_TASKS}=window.PlannerDefaults;
+const {PALETTE,COLORS,DAYS,WEEKDAYS,DEFAULT_TASKS,DEFAULT_HABITS,HABIT_LINKS}=window.PlannerDefaults;
 const {ICON_KEYS,ICON_NAMES,normalizeIconKey,inferIcon,iconHtml,taskIcon}=window.PlannerIcons;
 
 function freshDefaultTasks(){
-  return DEFAULT_TASKS.map(task=>({...task,days:[...task.days]}));
+  return DEFAULT_TASKS.map(task=>({...task,days:[...task.days],habitId:HABIT_LINKS[task.id]||null}));
 }
+function freshHabits(){return DEFAULT_HABITS.map(h=>({...h}));}
 
-const state={tab:'today',date:strip(new Date()),month:strip(new Date()),tasks:loadJSON(STORAGE_PREFIX+'tasks',null)||freshDefaultTasks(),dayCache:{},editing:null};
+const state={tab:'today',date:strip(new Date()),month:strip(new Date()),tasks:loadJSON(STORAGE_PREFIX+'tasks',null)||freshDefaultTasks(),dayCache:{},editing:null,habits:loadJSON(STORAGE_PREFIX+'habits',null)||freshHabits()};
 function strip(d){const x=new Date(d);x.setHours(0,0,0,0);return x}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
 
@@ -22,6 +23,7 @@ function fromTime(v){const [h,m]=v.split(':').map(Number);return h*60+m}
 function loadJSON(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}
 function saveJSON(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{toast('Could not save on this device');return false}}
 function saveTasks(){saveJSON(STORAGE_PREFIX+'tasks',state.tasks)}
+function saveHabits(){saveJSON(STORAGE_PREFIX+'habits',state.habits)}
 function getDay(d){const k=dateKey(d);if(!(k in state.dayCache))state.dayCache[k]=loadJSON(STORAGE_PREFIX+'plan-day:'+k,{});return state.dayCache[k]}
 function saveDay(d){const k=dateKey(d);saveJSON(STORAGE_PREFIX+'plan-day:'+k,getDay(d))}
 function tasksOn(d){return state.tasks.filter(t=>Array.isArray(t.days)&&t.days.includes(d.getDay())).sort((a,b)=>a.start-b.start)}
@@ -77,15 +79,18 @@ bindBase();document.getElementById('prevMonth').onclick=()=>{state.month=new Dat
 
 // Habits and statistics views
 async function renderHabits(){
-const app=document.getElementById('app'),today=strip(new Date()),rows=[];
-for(const t of state.tasks.slice().sort((a,b)=>a.start-b.start)){
-  const s=await streak(t,today),dots=[];let scheduled=0,completed=0;
-  for(let i=6;i>=0;i--){const d=addDays(today,-i),active=t.days.includes(d.getDay()),done=active&&!!getDay(d)[t.id]?.done;if(active){scheduled++;if(done)completed++}dots.push(active?`<span class="${done?'on':''}"></span>`:`<span class="na"></span>`)}
-  const pct=scheduled?Math.round(completed/scheduled*100):0;
-  rows.push(`<button class="habit-row" data-edit="${t.id}" style="--habit-color:${t.color}"><span class="habit-icon">${iconFor(t)}</span><span class="habit-main"><span class="habit-top"><b>${esc(t.label)}</b><strong>${s} day${s===1?'':'s'}</strong></span><span class="habit-sub">${pct}% this week · ${mins(t.start)}</span><span class="habit-progress"><i style="width:${pct}%"></i></span><span class="week-dots">${dots.join('')}</span></span><span class="habit-chevron">›</span></button>`)
+const app=document.getElementById('app');
+const rows=[];
+for(const h of state.habits){
+ const linked=state.tasks.filter(t=>t.habitId===h.id);
+ let completed=0,total=0;
+ const today=strip(new Date());
+ for(let i=6;i>=0;i--){const d=addDays(today,-i);linked.forEach(t=>{if(t.days.includes(d.getDay())){total++;if(getDay(d)[t.id]?.done)completed++;}})}
+ const pct=total?Math.round(completed/total*100):0;
+ rows.push(`<div class="habit-card" style="--habit-color:${h.color}"><div class="habit-header"><span class="habit-icon">${iconHtml(h.icon)}</span><b>${esc(h.name)}</b><strong>${pct}%</strong></div><div class="habit-progress"><i style="width:${pct}%"></i></div><div class="habit-linked">${linked.map(t=>`<span>${iconFor(t)} ${esc(t.label)}</span>`).join('')}</div></div>`)
 }
-app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">Consistency</div><h1>Habits</h1></div></div><div class="habit-summary"><span><b>${state.tasks.length}</b> recurring blocks</span><span>Past 7 days</span></div><div class="habit-list">${rows.join('')}</div>`;
-bindBase();document.querySelectorAll('[data-edit]').forEach(x=>x.onclick=()=>openEditor(x.dataset.edit))
+app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">Consistency</div><h1>Habits</h1></div></div><div class="habit-list">${rows.join('')}</div>`;
+bindBase();
 }
 async function renderStats(){const app=document.getElementById('app'),today=strip(new Date());let done30=0,total30=0,done7=0,total7=0,totalMinutes=0;const byDay=[];for(let i=29;i>=0;i--){const d=addDays(today,-i),ts=tasksOn(d),dn=ts.filter(t=>getDay(d)[t.id]?.done).length;total30+=ts.length;done30+=dn;if(i<7){total7+=ts.length;done7+=dn}ts.forEach(t=>{if(getDay(d)[t.id]?.done)totalMinutes+=Math.max(0,t.end-t.start)});byDay.push(ts.length?Math.round(dn/ts.length*100):0)}let best=0;for(const t of state.tasks)best=Math.max(best,await streak(t,today));const p30=total30?Math.round(done30/total30*100):0,p7=total7?Math.round(done7/total7*100):0;app.innerHTML=top()+`<div class="date-row"><div><div class="kicker">Your progress</div><h1>Stats</h1></div></div><div class="stats-grid"><div class="stat"><div class="stat-num">${p7}%</div><div class="stat-label">Last 7 days</div></div><div class="stat"><div class="stat-num">${p30}%</div><div class="stat-label">Last 30 days</div></div><div class="stat"><div class="stat-num">${best}</div><div class="stat-label">Best current streak</div></div><div class="stat"><div class="stat-num">${(totalMinutes/60).toFixed(1)}</div><div class="stat-label">Completed hours · 30d</div></div><div class="stat wide"><div class="progress-title">Recent consistency</div>${[7,14,30].map(n=>{const vals=byDay.slice(-n),p=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;return `<div class="bar-row"><div class="bar-label"><span>${n} day average</span><b>${p}%</b></div><div class="bar-track"><div class="bar-fill" style="width:${p}%"></div></div></div>`}).join('')}</div><div class="stat wide"><div class="progress-title">Data stays on this device</div><div class="progress-sub">Use Backup from the top-right menu to protect schedule and history.</div></div></div>`;bindBase()}
 function bindTasks(){document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=e=>{e.stopPropagation();const row=b.closest('.structured-row,.task');if(row){row.classList.add('completing');setTimeout(()=>toggle(b.dataset.toggle),150)}else toggle(b.dataset.toggle)});document.querySelectorAll('[data-edit]').forEach(x=>x.onclick=()=>openEditor(x.dataset.edit));document.querySelectorAll('.structured-row[data-edit]').forEach(row=>{let timer=null,moved=false;row.addEventListener('touchstart',()=>{moved=false;timer=setTimeout(()=>{navigator.vibrate?.(12);openEditor(row.dataset.edit)},520)},{passive:true});row.addEventListener('touchmove',()=>{moved=true;clearTimeout(timer)},{passive:true});row.addEventListener('touchend',()=>clearTimeout(timer),{passive:true});row.addEventListener('touchcancel',()=>clearTimeout(timer),{passive:true})})}
@@ -103,6 +108,7 @@ wrap.innerHTML=`<div class="sheet"><div class="grab"></div><h3>${id?'Edit block'
 <div class="icon-preview" style="--preview-color:${t.color}"><div class="icon-preview-box" id="iconPreview">${iconHtml(initialIcon)}</div><div class="icon-preview-copy"><b id="previewName">${esc(t.label||'New block')}</b><small id="previewIconName">${ICON_NAMES[initialIcon]}</small></div></div>
 <div class="field"><label>Name</label><input id="fLabel" value="${esc(t.label)}" placeholder="What are you doing?"></div>
 <div class="field"><label>Note for ${state.date.toLocaleDateString(undefined,{month:'short',day:'numeric'})}</label><textarea id="fNote" rows="3" maxlength="240" placeholder="Optional focus, objective, or reminder for this occurrence">${esc(id?taskNote(t,state.date):'')}</textarea></div>
+<div class="field"><label>Habit</label><select id="fHabit"><option value="">None</option>${state.habits.map(h=>`<option value="${h.id}" ${t.habitId===h.id?"selected":""}>${h.name}</option>`).join("")}</select></div>
 <div class="field"><label>Icon</label><div class="icon-grid">${ICON_KEYS.map(k=>`<button type="button" class="icon-choice ${initialIcon===k?'on':''}" data-icon="${k}" aria-label="${ICON_NAMES[k]}">${iconHtml(k)}<span>${ICON_NAMES[k]}</span></button>`).join('')}</div></div>
 <div class="row"><div class="field"><label>Start</label><input id="fStart" type="time" value="${timeInput(t.start)}"></div><div class="field"><label>End</label><input id="fEnd" type="time" value="${timeInput(t.end)}"></div></div>
 <div class="field"><label>Repeats</label><div class="preset-row"><button type="button" class="preset-btn" data-repeat="weekdays">Weekdays</button><button type="button" class="preset-btn" data-repeat="weekends">Weekends</button><button type="button" class="preset-btn" data-repeat="daily">Every day</button><button type="button" class="preset-btn" data-repeat="once">This day</button></div><div class="days">${DAYS.map((d,i)=>`<button type="button" class="daypick ${t.days.includes(i)?'on':''}" data-daypick="${i}">${d}</button>`).join('')}</div></div>
@@ -120,7 +126,7 @@ wrap.querySelectorAll('[data-repeat]').forEach(b=>b.onclick=()=>{const mode=b.da
 wrap.querySelectorAll('[data-color]').forEach(b=>b.onclick=()=>{selectedColor=b.dataset.color;wrap.querySelectorAll('[data-color]').forEach(x=>x.classList.toggle('on',x===b));updatePreview()});
 wrap.querySelector('#cancelEdit').onclick=()=>wrap.remove();
 const del=wrap.querySelector('#deleteTask');if(del)del.onclick=()=>{state.tasks=state.tasks.filter(x=>x.id!==id);saveTasks();wrap.remove();render()};
-wrap.querySelector('#saveTask').onclick=()=>{const label=wrap.querySelector('#fLabel').value.trim(),start=fromTime(wrap.querySelector('#fStart').value),end=fromTime(wrap.querySelector('#fEnd').value);if(!label)return toast('Add a name');if(!selectedDays.size)return toast('Choose at least one day');if(end<=start)return toast('End time must be later');let savedId=id;if(id){Object.assign(state.editing,{label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon})}else{savedId='t'+Date.now();state.tasks.push({id:savedId,label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon})}saveTasks();saveTaskNote(savedId,wrap.querySelector('#fNote').value,state.date);wrap.remove();render()}
+wrap.querySelector('#saveTask').onclick=()=>{const label=wrap.querySelector('#fLabel').value.trim(),start=fromTime(wrap.querySelector('#fStart').value),end=fromTime(wrap.querySelector('#fEnd').value);if(!label)return toast('Add a name');if(!selectedDays.size)return toast('Choose at least one day');if(end<=start)return toast('End time must be later');let savedId=id;const habitId=wrap.querySelector('#fHabit')?.value||null; if(habitId){const habit=state.habits.find(h=>h.id===habitId);if(habit)selectedColor=habit.color;} if(id){Object.assign(state.editing,{label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon,habitId})}else{savedId='t'+Date.now();state.tasks.push({id:savedId,label,start,end,days:[...selectedDays],color:selectedColor,icon:selectedIcon,habitId})}saveTasks();saveTaskNote(savedId,wrap.querySelector('#fNote').value,state.date);wrap.remove();render()}
 }
 
 // Backup and transfer
@@ -301,5 +307,5 @@ function openBackup(){
 // Interaction helpers and initialization
 function toast(msg){document.querySelector('.toast')?.remove();const x=document.createElement('div');x.className='toast';x.textContent=msg;document.body.appendChild(x);setTimeout(()=>x.remove(),1800)}
 function bindSwipe(el,fn){let x=null,y=null;el.ontouchstart=e=>{if(e.touches.length===1&&!e.target.closest('button,input,textarea,.sheet')){x=e.touches[0].clientX;y=e.touches[0].clientY}};el.ontouchend=e=>{if(x===null)return;const dx=e.changedTouches[0].clientX-x,dy=e.changedTouches[0].clientY-y;x=y=null;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.4)fn(dx)}}
-document.getElementById('fab').onclick=()=>openEditor();if(!localStorage.getItem(STORAGE_PREFIX+'tasks'))saveTasks();render();setInterval(()=>{if(state.tab==='today'&&isToday(state.date))render()},60000);
+document.getElementById('fab').onclick=()=>openEditor();if(!localStorage.getItem(STORAGE_PREFIX+'tasks'))saveTasks(); if(!localStorage.getItem(STORAGE_PREFIX+'habits'))saveHabits();render();setInterval(()=>{if(state.tab==='today'&&isToday(state.date))render()},60000);
 })();
